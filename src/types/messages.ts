@@ -16,6 +16,8 @@ export interface CalendarEvent {
   endTime: string       // ISO 8601 — endTime 경과 시 자동 제거
   location?: string
   link?: string         // Google Calendar 이벤트 URL
+  created?: string      // ISO 8601 — 이벤트 생성 시각
+  updated?: string      // ISO 8601 — 이벤트 최종 수정 시각
 }
 
 export interface EmailItem {

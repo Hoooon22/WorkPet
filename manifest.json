@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Work-Pet: Orbit",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2PKm39lBr/kW8Ujc3Er24fLqAJ71mSulmMVrkPlQh2U3Di/sXkhFwInBzzAbcJrOtSlXDRE5DMeub2X9LWzTLssLEd007SKaUoAeQbKOvHEOJPvXATQqAdKzGO0Q9jnmFw0uxMU2RldDLo2GQ0rPi5rhOjwEY6a4Xvcq2dwHhYWRzDAUo84t1pQ63GpNMQE6ofc23bbCzwa+z3cWdVIkVmnJfUMjs7cA/SH5dP0Tk0Ty24Jukfj3P2h47JFCIaTMdn8JW0H4LOs3aab9BQerpGwN0BmGzC63JKtlR9BCdVJWS2MLN/432V+n1CyqWJ+yUX39nKY0Rii0neORFl4AUwIDAQAB",
   "description": "Google Workspace & Monday 연동형 비침해적 AI 펫 비서",
   "permissions": [
@@ -13,7 +13,8 @@
     "sidePanel",
     "identity",
     "identity.email",
-    "gcm"
+    "gcm",
+    "notifications"
   ],
   "oauth2": {
     "client_id": "710033694284-t67a8a29c9f2sou3bingnroocffjvn5d.apps.googleusercontent.com",
