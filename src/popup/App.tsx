@@ -11,6 +11,7 @@ type AuthStatus = 'checking' | 'signed-in' | 'signed-out'
 export default function App() {
   const [authStatus, setAuthStatus] = useState<AuthStatus>('checking')
   const [loading, setLoading]       = useState(false)
+  const [userEmail, setUserEmail]   = useState<string | null>(null)
 
   // Gemini API 키 설정
   const [geminiKey, setGeminiKey]       = useState('')
@@ -19,11 +20,13 @@ export default function App() {
   const geminiInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    chrome.storage.local.get(['geminiApiKey'], ({ geminiApiKey }) => {
+    chrome.storage.local.get(['geminiApiKey', 'orbitUserEmail'], ({ geminiApiKey, orbitUserEmail }) => {
       if (geminiApiKey) {
         setGeminiExists(true)
-        // 실제 키 값은 표시하지 않음 — 마스킹
         setGeminiKey('')
+      }
+      if (orbitUserEmail) {
+        setUserEmail(orbitUserEmail)
       }
     })
   }, [])
@@ -48,9 +51,19 @@ export default function App() {
 
   // ---- 마운트: 인증 상태 확인 (storage 기반 — 캐시 오감지 방지) ----
   useEffect(() => {
-    chrome.storage.local.get(['orbitSignedIn'], ({ orbitSignedIn }) => {
+    chrome.storage.local.get(['orbitSignedIn', 'orbitUserEmail'], ({ orbitSignedIn, orbitUserEmail }) => {
+      if (orbitUserEmail) setUserEmail(orbitUserEmail)
       if (orbitSignedIn === true) {
         setAuthStatus('signed-in')
+        // storage에 이메일이 없으면 identity API로 보완
+        if (!orbitUserEmail) {
+          chrome.identity.getProfileUserInfo({ accountStatus: 'SYNC' as chrome.identity.AccountStatus }, (info) => {
+            if (info?.email) {
+              setUserEmail(info.email)
+              chrome.storage.local.set({ orbitUserEmail: info.email })
+            }
+          })
+        }
       } else if (orbitSignedIn === false) {
         setAuthStatus('signed-out')
       } else {
@@ -79,6 +92,13 @@ export default function App() {
       }
       chrome.storage.local.set({ orbitSignedIn: true })
       setAuthStatus('signed-in')
+      // 연결된 계정 이메일 가져오기
+      chrome.identity.getProfileUserInfo({ accountStatus: 'SYNC' as chrome.identity.AccountStatus }, (info) => {
+        if (info?.email) {
+          setUserEmail(info.email)
+          chrome.storage.local.set({ orbitUserEmail: info.email })
+        }
+      })
       // 로그인 직후 즉시 Push 초기화 + 브리핑 요청
       chrome.runtime.sendMessage({ type: 'INIT_PUSH' }).catch(() => {})
       chrome.runtime.sendMessage({ type: 'FETCH_NOW' }).catch(() => {})
@@ -92,7 +112,9 @@ export default function App() {
   // ---- 로그아웃 ----
   const handleSignOut = useCallback(() => {
     setLoading(true)
+    setUserEmail(null)
     chrome.storage.local.set({ orbitSignedIn: false })
+    chrome.storage.local.remove('orbitUserEmail')
     // 펫 작별 인사 후 퇴장 (탭에 직접 전송)
     chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
       if (tab?.id) chrome.tabs.sendMessage(tab.id, { type: 'LOGOUT_FAREWELL' }).catch(() => {})
@@ -136,7 +158,7 @@ export default function App() {
         </div>
         <div>
           <h1 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#111827' }}>Work-Pet: Orbit</h1>
-          <p style={{ margin: 0, fontSize: '11px', color: '#6b7280' }}>AI 펫 비서 v0.1.0</p>
+          <p style={{ margin: 0, fontSize: '11px', color: '#6b7280' }}>AI 펫 비서 v0.1.2</p>
         </div>
       </div>
 
@@ -240,7 +262,10 @@ export default function App() {
               <span style={{ fontSize: '14px' }}>✅</span>
               <div>
                 <p style={{ margin: 0, fontSize: '12px', fontWeight: 600, color: '#166534' }}>Google 연결됨</p>
-                <p style={{ margin: 0, fontSize: '11px', color: '#16a34a' }}>Gmail · Calendar</p>
+                {userEmail
+                  ? <p style={{ margin: 0, fontSize: '11px', color: '#16a34a', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{userEmail}</p>
+                  : <p style={{ margin: 0, fontSize: '11px', color: '#16a34a' }}>Gmail · Calendar</p>
+                }
               </div>
             </div>
             <motion.button
