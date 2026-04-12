@@ -1,39 +1,59 @@
 # Work-Pet: Orbit 🐾
 
-Google Workspace(Gmail, Calendar)와 Monday.com을 연동하는 **AI 펫 비서** Chrome 확장 프로그램.
+> 화면 한 구석에 조용히 머물며, 필요한 순간에만 말을 거는 AI 펫 비서
 
-화면 우측 하단에 조용히 머물며 마감일 임박 알림, 일정 요약, 미완료 태스크 리마인더를 전달합니다.
+Google Workspace(Gmail, Calendar)와 Monday.com을 연동하는 Chrome 확장 프로그램.  
+전체화면 오버레이나 팝업 없이, 화면 하단에 작은 펫 캐릭터로만 존재합니다.
+
+---
+
+## 핵심 철학 — 방해하지 않는다
+
+펫은 항상 **화면 우측 하단**에만 위치하며, 전체 오버레이에 `pointer-events: none`이 적용되어 있어 기존 작업에 클릭·마우스 이벤트가 전혀 전달되지 않습니다. 알림이 있을 때 펫이 살짝 반응하고, 클릭하면 그때서야 말풍선이 열립니다.
 
 ---
 
 ## 주요 기능
 
-- 마감 임박 Monday 태스크 알림
-- Google Calendar 일정 브리핑
-- Gmail 중요 메일 요약
-- 화면을 가리지 않는 비침해적 말풍선 UI
-- 집중 타이머, 번역, 단어 수 세기 등 빠른 도구 모음
+### 🔔 알림 & 브리핑
+- **Push 알림**: Google Calendar 일정, Gmail 중요 메일, Monday.com 태스크 마감이 임박하면 펫이 반응
+- **수동 브리핑**: 펫 클릭 후 브리핑 탭에서 오늘 일정 전체를 한눈에 조회
+- **읽음 처리**: 항목을 하나씩 확인하면 실시간으로 카운트가 줄어들고, 모두 읽으면 자동으로 안정 상태로 전환
+- **탭 간 동기화**: `chrome.storage`로 상태를 공유해 여러 탭에서 동일한 펫 상태 유지
+
+### 🐾 펫 캐릭터
+- **6종 Lottie 애니메이션 캐릭터**: 고양이, 토끼, 고슴도치, 너구리, 유니콘, 햄스터
+- **Monday 가챠 시스템**: 매주 월요일 아침 알림과 함께 펫 뽑기 연출 (COMMON → RARE → EPIC → LEGENDARY 등급별 특수 효과)
+- **자유 배회(Wandering)**: idle 상태에서 화면 하단을 좌우로 자유롭게 걸어다니며, 위치는 탭 전환 후에도 복원
+- **감정 표현**: 졸음(2분 idle 경과), 아침 인사(오전 6~11시 첫 등장), 로그인·로그아웃 인사말
+
+### 🛠️ 내장 도구 (브라우저 도구 패널)
+펫 클릭 → 도구 탭에서 바로 사용 가능
+
+| 도구 | 설명 |
+|------|------|
+| 🌐 번역 | 선택 텍스트 또는 현재 페이지 번역 |
+| 📝 페이지 요약 | 현재 페이지 내용을 AI로 요약 |
+| ⏱️ 집중 타이머 | 포모도로식 타이머 (말풍선이 닫혀도 계속 작동) |
+| 📋 퀵 메모 | 빠른 메모 작성 |
+| 🎨 색상 추출 | 화면 픽셀 색상 추출 |
+| 📷 영역 캡처 | 화면 영역 선택 후 스크린샷 |
+| 🤖 Gemini Ask | AI에게 바로 질문 |
+| 🔢 단어 수 세기 | 선택 텍스트 단어·글자 수 카운트 |
 
 ---
 
-## 설치 방법 (빌드된 파일 사용)
+## 설치 방법
 
-### 1. 릴리즈 파일 다운로드
+### 릴리즈 파일로 설치 (권장)
 
-[Releases](../../releases) 페이지에서 최신 버전의 `work-pet-orbit-v*.zip`을 다운로드합니다.
+1. [Releases](../../releases) 페이지에서 최신 버전의 `work-pet-orbit-v*.zip` 다운로드
+2. 압축 해제
+3. Chrome 주소창에 `chrome://extensions` 입력
+4. 우측 상단 **개발자 모드** 토글 활성화
+5. **압축 해제된 확장 프로그램을 로드합니다** 클릭 → 압축 해제된 `dist/` 폴더 선택
 
-### 2. 압축 해제
-
-다운로드한 `.zip` 파일을 원하는 위치에 압축 해제합니다.
-
-### 3. Chrome에 확장 프로그램 설치
-
-1. Chrome 주소창에 `chrome://extensions` 입력 후 이동
-2. 우측 상단 **개발자 모드** 토글 활성화
-3. **압축 해제된 확장 프로그램을 로드합니다** 버튼 클릭
-4. 압축 해제된 폴더(`dist/`) 선택
-
-> Edge 브라우저도 동일한 방법으로 설치 가능합니다.
+> Microsoft Edge도 동일한 방법으로 설치 가능합니다.
 
 ---
 
@@ -44,32 +64,16 @@ Google Workspace(Gmail, Calendar)와 Monday.com을 연동하는 **AI 펫 비서*
 - Node.js 18 이상
 - npm 9 이상
 
-### 빌드 단계
+### 빌드
 
 ```bash
-# 저장소 클론
-git clone https://github.com/<your-username>/WorkPet.git
+git clone https://github.com/Hoooon22/WorkPet.git
 cd WorkPet
-
-# 의존성 설치
 npm install
-
-# 프로덕션 빌드
 npm run build
 ```
 
-빌드 완료 후 `dist/` 폴더가 생성됩니다. 위의 **3단계**를 참고해 Chrome에 로드합니다.
-
----
-
-## 개발 환경 실행
-
-```bash
-npm run dev
-```
-
-HMR(Hot Module Replacement)이 활성화된 개발 서버가 실행됩니다.  
-`dist/`에 실시간으로 반영되므로 Chrome 확장 프로그램을 다시 로드하면 변경 사항을 확인할 수 있습니다.
+빌드 완료 후 생성된 `dist/` 폴더를 위 설치 5단계에서 선택합니다.
 
 ---
 
@@ -77,10 +81,11 @@ HMR(Hot Module Replacement)이 활성화된 개발 서버가 실행됩니다.
 
 | 레이어 | 기술 |
 |--------|------|
-| 번들러 | Vite 5 + `@crxjs/vite-plugin` |
+| 번들러 | Vite 5 + `@crxjs/vite-plugin` (MV3 HMR 지원) |
 | UI | React 18 (TypeScript) |
-| 스타일 | Tailwind CSS 3 (`wp-` prefix) |
-| 애니메이션 | Framer Motion 11 |
+| 스타일 | Tailwind CSS 3 (`wp-` prefix로 충돌 방지) |
+| 애니메이션 | Framer Motion 11 (스프링 물리 기반) |
+| 펫 캐릭터 | Lottie (`lottie-react`) |
 | 타입 | `@types/chrome` |
 
 ---
