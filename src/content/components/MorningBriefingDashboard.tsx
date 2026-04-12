@@ -424,16 +424,35 @@ export default function MorningBriefingDashboard({
                         style={{
                           padding: '8px 10px',
                           borderRadius: '9px',
-                          background: '#f0fdf4',
-                          border: '1px solid #bbf7d0',
+                          background: email.isMondayEmail ? '#fef9ee' : '#f0fdf4',
+                          border: email.isMondayEmail ? '1px solid #f59e0b' : '1px solid #bbf7d0',
                           cursor: email.link ? 'pointer' : 'default',
+                          boxShadow: email.isMondayEmail ? '0 0 0 1px rgba(245,158,11,0.15)' : 'none',
                         }}
                         title={email.link ? 'Gmail에서 열기' : ''}
                       >
-                        <p style={{ margin: 0, fontSize: '12px', fontWeight: 600, color: '#14532d', fontFamily: 'sans-serif', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {email.isMondayEmail && (
+                          <div style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '3px',
+                            background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                            color: '#fff',
+                            fontSize: '9px',
+                            fontWeight: 700,
+                            padding: '1px 6px',
+                            borderRadius: '999px',
+                            fontFamily: 'sans-serif',
+                            letterSpacing: '0.3px',
+                            marginBottom: '4px',
+                          }}>
+                            📋 monday.com 알람
+                          </div>
+                        )}
+                        <p style={{ margin: 0, fontSize: '12px', fontWeight: email.isMondayEmail ? 700 : 600, color: email.isMondayEmail ? '#92400e' : '#14532d', fontFamily: 'sans-serif', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {email.subject}
                         </p>
-                        <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#16a34a', fontFamily: 'sans-serif', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <p style={{ margin: '2px 0 0', fontSize: '11px', color: email.isMondayEmail ? '#b45309' : '#16a34a', fontFamily: 'sans-serif', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {email.from}
                         </p>
                         {email.snippet && (
@@ -586,9 +605,10 @@ export default function MorningBriefingDashboard({
                         gap: '8px',
                         padding: '7px 28px 7px 10px',
                         borderRadius: '8px',
-                        background: '#f0fdf4',
-                        border: '1px solid #bbf7d0',
+                        background: email.isMondayEmail ? '#fef9ee' : '#f0fdf4',
+                        border: email.isMondayEmail ? '1px solid #f59e0b' : '1px solid #bbf7d0',
                         cursor: email.link ? 'pointer' : 'default',
+                        boxShadow: email.isMondayEmail ? '0 0 0 1px rgba(245,158,11,0.15)' : 'none',
                       }}
                     >
                       <button
@@ -597,18 +617,49 @@ export default function MorningBriefingDashboard({
                         style={{
                           all: 'unset', position: 'absolute', top: '5px', right: '6px',
                           width: '16px', height: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          borderRadius: '50%', background: 'rgba(134,239,172,0.4)', color: '#166534',
+                          borderRadius: '50%',
+                          background: email.isMondayEmail ? 'rgba(245,158,11,0.2)' : 'rgba(134,239,172,0.4)',
+                          color: email.isMondayEmail ? '#92400e' : '#166534',
                           fontSize: '10px', fontWeight: 700, cursor: 'pointer', lineHeight: 1, fontFamily: 'sans-serif',
                         }}
-                        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = '#bbf7d0' }}
-                        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(134,239,172,0.4)' }}
+                        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = email.isMondayEmail ? '#fde68a' : '#bbf7d0' }}
+                        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = email.isMondayEmail ? 'rgba(245,158,11,0.2)' : 'rgba(134,239,172,0.4)' }}
                       >✕</button>
-                      <span style={{ fontSize: '13px', marginTop: '1px' }}>✉️</span>
+                      <span style={{ fontSize: '13px', marginTop: '1px' }}>
+                        {email.isMondayEmail ? '📋' : '✉️'}
+                      </span>
                       <div style={{ flex: 1, overflow: 'hidden' }}>
-                        <p style={{ margin: 0, fontSize: '12px', fontWeight: 600, color: '#166534', fontFamily: 'sans-serif', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {email.isMondayEmail && (
+                          <div style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '3px',
+                            background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                            color: '#fff',
+                            fontSize: '9px',
+                            fontWeight: 700,
+                            padding: '1px 6px',
+                            borderRadius: '999px',
+                            fontFamily: 'sans-serif',
+                            letterSpacing: '0.3px',
+                            marginBottom: '3px',
+                          }}>
+                            📋 monday.com 알람
+                          </div>
+                        )}
+                        <p style={{
+                          margin: 0,
+                          fontSize: '12px',
+                          fontWeight: email.isMondayEmail ? 700 : 600,
+                          color: email.isMondayEmail ? '#92400e' : '#166534',
+                          fontFamily: 'sans-serif',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}>
                           {email.subject}
                         </p>
-                        <p style={{ margin: '1px 0 0', fontSize: '11px', color: '#16a34a', fontFamily: 'sans-serif', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <p style={{ margin: '1px 0 0', fontSize: '11px', color: email.isMondayEmail ? '#b45309' : '#16a34a', fontFamily: 'sans-serif', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {email.from}
                         </p>
                         {email.snippet && (

@@ -27,6 +27,7 @@ export interface EmailItem {
   snippet: string
   receivedAt: string    // ISO 8601
   link?: string         // Gmail 메시지 URL
+  isMondayEmail?: boolean  // monday.com 발신 메일 여부
 }
 
 export interface BriefingPayload {

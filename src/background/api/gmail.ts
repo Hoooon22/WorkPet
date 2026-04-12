@@ -95,12 +95,13 @@ export async function fetchNewEmailsViaHistory(): Promise<EmailItem[]> {
       const fromRaw  = getHeader(headers, 'From') ?? ''
       const fromName = fromRaw.replace(/<[^>]+>/, '').trim() || fromRaw
       return {
-        id:         msg.id,
+        id:             msg.id,
         subject,
-        from:       fromName,
-        snippet:    msg.snippet ?? '',
-        receivedAt: new Date(Number(msg.internalDate)).toISOString(),
-        link:       `https://mail.google.com/mail/u/0/#inbox/${msg.id}`,
+        from:           fromName,
+        snippet:        msg.snippet ?? '',
+        receivedAt:     new Date(Number(msg.internalDate)).toISOString(),
+        link:           `https://mail.google.com/mail/u/0/#inbox/${msg.id}`,
+        isMondayEmail:  detectMondayEmail(fromRaw, subject),
       }
     })
 }
@@ -145,12 +146,13 @@ export async function fetchUnreadEmails(): Promise<EmailItem[]> {
       const fromName = fromRaw.replace(/<[^>]+>/, '').trim() || fromRaw
 
       return {
-        id:         msg.id,
+        id:            msg.id,
         subject,
-        from:       fromName,
-        snippet:    msg.snippet ?? '',
-        receivedAt: new Date(Number(msg.internalDate)).toISOString(),
-        link:       `https://mail.google.com/mail/u/0/#all/${msg.id}`,
+        from:          fromName,
+        snippet:       msg.snippet ?? '',
+        receivedAt:    new Date(Number(msg.internalDate)).toISOString(),
+        link:          `https://mail.google.com/mail/u/0/#all/${msg.id}`,
+        isMondayEmail: detectMondayEmail(fromRaw, subject),
       }
     })
 }
@@ -179,4 +181,18 @@ interface GmailHistoryResponse {
 
 function getHeader(headers: GmailHeader[], name: string): string | undefined {
   return headers.find((h) => h.name.toLowerCase() === name.toLowerCase())?.value
+}
+
+/** monday.com 발신 여부 판별 */
+function detectMondayEmail(from: string, subject: string): boolean {
+  const fromLower    = from.toLowerCase()
+  const subjectLower = subject.toLowerCase()
+  return (
+    fromLower.includes('@monday.com') ||
+    fromLower.includes('monday.com') ||
+    subjectLower.includes('monday.com') ||
+    // monday.com 알람 메일 제목 패턴
+    subjectLower.includes('on monday') ||
+    subjectLower.includes('in monday')
+  )
 }
