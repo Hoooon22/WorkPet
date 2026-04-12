@@ -1,6 +1,6 @@
 # Work-Pet: Orbit 🐾
 
-Google Workspace(Gmail, Calendar)와 Monday.com을 연동하는 **비침해적 AI 펫 비서** Chrome 확장 프로그램.
+Google Workspace(Gmail, Calendar)와 Monday.com을 연동하는 **AI 펫 비서** Chrome 확장 프로그램.
 
 화면 우측 하단에 조용히 머물며 마감일 임박 알림, 일정 요약, 미완료 태스크 리마인더를 전달합니다.
 
