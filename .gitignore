@@ -13,6 +13,10 @@ dist/
 .env.local
 .env.*.local
 
+# Extension signing key (절대 커밋 금지 — 분실 시 Extension ID 변경됨)
+orbit-extension.pem
+orbit-key.txt
+
 # Firebase
 .firebase/
 firebase-debug.log
