@@ -1,0 +1,6 @@
+/*
+ * content.css — 더 이상 content script에서 import하지 않음
+ *
+ * index.tsx가 Shadow DOM을 사용하므로 이 파일은 로드되지 않는다.
+ * 스타일은 index.tsx 내 shadow.appendChild(style)로 직접 주입된다.
+ */

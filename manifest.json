@@ -1,0 +1,47 @@
+{
+  "manifest_version": 3,
+  "name": "Work-Pet: Orbit",
+  "version": "0.1.0",
+  "description": "Google Workspace & Monday 연동형 비침해적 AI 펫 비서",
+  "permissions": [
+    "storage",
+    "alarms",
+    "scripting",
+    "activeTab",
+    "tabs",
+    "sidePanel",
+    "identity",
+    "identity.email",
+    "gcm"
+  ],
+  "oauth2": {
+    "client_id": "710033694284-t67a8a29c9f2sou3bingnroocffjvn5d.apps.googleusercontent.com",
+    "scopes": [
+      "https://www.googleapis.com/auth/calendar.readonly",
+      "https://www.googleapis.com/auth/gmail.readonly"
+    ]
+  },
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "src/background/background.ts",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["src/content/index.tsx"],
+      "run_at": "document_start",
+      "all_frames": false
+    }
+  ],
+  "action": {
+    "default_popup": "src/popup/index.html",
+    "default_title": "Work-Pet: Orbit"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["assets/*"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
