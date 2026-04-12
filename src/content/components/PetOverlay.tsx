@@ -66,6 +66,7 @@ export default function PetOverlay() {
   const [activePet, setActivePet]       = useState<GachaResult | null>(null)
   const [isFreshSummon, setIsFreshSummon] = useState(false)
   const [wanderEnabled, setWanderEnabled] = useState(true)
+  const [resetTrigger, setResetTrigger] = useState(0)
   const [showAreaSelector, setShowAreaSelector] = useState(false)
 
   // ---- 브리핑 탭 전용: 수동 전체 브리핑 (알람 시스템과 독립) ----
@@ -424,6 +425,14 @@ export default function PetOverlay() {
     setTimeout(() => setShowAreaSelector(true), 320)
   }, [])
 
+  // ---- 원위치 이동: 돌아다니기 비활성화 + 우측 하단으로 복귀 ----
+  const handleReturnHome = useCallback(() => {
+    setWanderEnabled(false)
+    setResetTrigger((prev) => prev + 1)
+    const defaultX = window.innerWidth - 88
+    chrome.storage.local.set({ petX: defaultX })
+  }, [])
+
   // ---- 펫 위치 변경 시 storage에 저장 ----
   const handleXChange = useCallback((x: number) => {
     chrome.storage.local.set({ petX: x })
@@ -473,7 +482,7 @@ export default function PetOverlay() {
         pointerEvents: 'none',
       }}
     >
-      <WanderingPetContainer isActive={petState === 'idle' && !bubbleOpen && wanderEnabled} initialX={initialX} onXChange={handleXChange}>
+      <WanderingPetContainer isActive={petState === 'idle' && !bubbleOpen && wanderEnabled} initialX={initialX} onXChange={handleXChange} resetTrigger={resetTrigger}>
         {({ isWalking, direction, x }) => {
           // 말풍선(maxWidth 220px)이 오른쪽에서 잘릴 것 같으면 왼쪽으로 뒤집기
           // 펫 위치(x) + 펫 너비(64) + 말풍선 오프셋(~51) + 말풍선 최대 너비(220) > 화면 너비
@@ -489,6 +498,7 @@ export default function PetOverlay() {
               onEmailRead={handleEmailRead}
               wanderEnabled={wanderEnabled}
               onToggleWander={() => setWanderEnabled((prev) => !prev)}
+              onReturnHome={handleReturnHome}
               onCloseBubble={() => setBubbleOpen(false)}
               onStartAreaCapture={handleStartAreaCapture}
               focusTimer={focusTimer}

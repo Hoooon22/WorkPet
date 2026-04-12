@@ -6,9 +6,10 @@ interface WanderingPetContainerProps {
   isActive: boolean
   initialX?: number
   onXChange?: (x: number) => void
+  resetTrigger?: number
 }
 
-export default function WanderingPetContainer({ children, isActive, initialX, onXChange }: WanderingPetContainerProps) {
+export default function WanderingPetContainer({ children, isActive, initialX, onXChange, resetTrigger }: WanderingPetContainerProps) {
   const [x, setX] = useState(0)
   const [initialized, setInitialized] = useState(false)
   const [isWalking, setIsWalking] = useState(false)
@@ -26,6 +27,23 @@ export default function WanderingPetContainer({ children, isActive, initialX, on
     xRef.current = startX
     setInitialized(true)
   }, []) // initialX는 최초 1회만 사용
+
+  // resetTrigger가 변경되면 기본 우측 위치로 이동
+  const resetTriggerRef = useRef(resetTrigger)
+  useEffect(() => {
+    if (resetTrigger === undefined || resetTrigger === resetTriggerRef.current) return
+    resetTriggerRef.current = resetTrigger
+    if (!initialized) return
+    const defaultX = window.innerWidth - 88
+    if (walkTimerRef.current) {
+      clearTimeout(walkTimerRef.current)
+      walkTimerRef.current = null
+    }
+    setIsWalking(false)
+    setDirection('left')
+    setX(defaultX)
+    xRef.current = defaultX
+  }, [resetTrigger, initialized])
 
   useEffect(() => {
     xRef.current = x

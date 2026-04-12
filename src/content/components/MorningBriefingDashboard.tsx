@@ -23,6 +23,7 @@ interface SpeechBubbleProps {
   onEmailRead: (id: string) => void
   wanderEnabled: boolean
   onToggleWander: () => void
+  onReturnHome: () => void
   onCloseBubble: () => void
   onStartAreaCapture: () => void
   focusTimer: FocusTimerState
@@ -105,7 +106,7 @@ type TabId = 'briefing' | 'alarm' | 'tools'
 
 export default function MorningBriefingDashboard({
   visible, briefing, onConfirm, onDismiss, onEventRead, onEmailRead,
-  wanderEnabled, onToggleWander, onCloseBubble, onStartAreaCapture,
+  wanderEnabled, onToggleWander, onReturnHome, onCloseBubble, onStartAreaCapture,
   focusTimer, onTimerStart, onTimerTogglePause, onTimerReset,
   fullBriefing, isLoadingFullBriefing, onFetchFullBriefing,
 }: SpeechBubbleProps) {
@@ -656,27 +657,45 @@ export default function MorningBriefingDashboard({
         <span style={{ fontSize: '12px', color: '#6b7280', fontFamily: 'sans-serif', fontWeight: 600 }}>
           🐾 돌아다니기
         </span>
-        <motion.button
-          onClick={onToggleWander}
-          whileTap={{ scale: 0.93 }}
-          aria-label={wanderEnabled ? '이동 끄기' : '이동 켜기'}
-          style={{
-            all: 'unset', cursor: 'pointer',
-            width: '40px', height: '22px', borderRadius: '11px',
-            background: wanderEnabled ? '#2563eb' : '#d1d5db',
-            position: 'relative', transition: 'background 0.2s ease', flexShrink: 0,
-          }}
-        >
-          <motion.span
-            animate={{ x: wanderEnabled ? 19 : 2 }}
-            transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <motion.button
+            onClick={onReturnHome}
+            whileHover={{ scale: 1.06 }}
+            whileTap={{ scale: 0.92 }}
+            aria-label="원래 위치로 돌아가기"
             style={{
-              display: 'block', width: '18px', height: '18px', borderRadius: '50%',
-              background: '#ffffff', position: 'absolute', top: '2px',
-              boxShadow: '0 1px 4px rgba(0,0,0,0.2)',
+              all: 'unset', cursor: 'pointer',
+              fontSize: '11px', fontWeight: 600, fontFamily: 'sans-serif',
+              color: '#6b7280', background: '#f3f4f6',
+              padding: '3px 8px', borderRadius: '6px',
+              border: '1px solid #e5e7eb',
+              lineHeight: 1.4,
             }}
-          />
-        </motion.button>
+          >
+            🏠 원위치
+          </motion.button>
+          <motion.button
+            onClick={onToggleWander}
+            whileTap={{ scale: 0.93 }}
+            aria-label={wanderEnabled ? '이동 끄기' : '이동 켜기'}
+            style={{
+              all: 'unset', cursor: 'pointer',
+              width: '40px', height: '22px', borderRadius: '11px',
+              background: wanderEnabled ? '#2563eb' : '#d1d5db',
+              position: 'relative', transition: 'background 0.2s ease', flexShrink: 0,
+            }}
+          >
+            <motion.span
+              animate={{ x: wanderEnabled ? 19 : 2 }}
+              transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+              style={{
+                display: 'block', width: '18px', height: '18px', borderRadius: '50%',
+                background: '#ffffff', position: 'absolute', top: '2px',
+                boxShadow: '0 1px 4px rgba(0,0,0,0.2)',
+              }}
+            />
+          </motion.button>
+        </div>
       </div>
 
       {/* ---- 액션 버튼 ---- */}
