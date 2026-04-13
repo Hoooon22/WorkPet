@@ -233,17 +233,20 @@ function ColorDetail({ color, onClose }: ColorDetailProps) {
 interface SwatchProps {
   color: ColorInfo
   size?: number
-  isSelected?: boolean
+  isCopied?: boolean
   onClick: () => void
 }
 
-function Swatch({ color, size = 28, isSelected = false, onClick }: SwatchProps) {
+function Swatch({ color, size = 28, isCopied = false, onClick }: SwatchProps) {
+  const { l: lum } = rgbToHsl(color.r, color.g, color.b)
+  const checkColor = lum < 50 ? '#ffffff' : '#1f2937'
+
   return (
     <motion.button
       whileHover={{ scale: 1.15, y: -2 }}
       whileTap={{ scale: 0.92 }}
       onClick={onClick}
-      title={color.hex}
+      title={`클릭해서 복사 — ${color.hex.toUpperCase()}`}
       style={{
         all: 'unset',
         cursor: 'pointer',
@@ -251,16 +254,35 @@ function Swatch({ color, size = 28, isSelected = false, onClick }: SwatchProps) 
         height: size,
         borderRadius: '6px',
         background: color.hex,
-        border: isSelected
-          ? '2px solid #1d4ed8'
+        border: isCopied
+          ? '2px solid #16a34a'
           : '2px solid rgba(0,0,0,0.12)',
-        boxShadow: isSelected
-          ? `0 0 0 2px #fff, 0 0 0 4px #1d4ed8`
+        boxShadow: isCopied
+          ? `0 0 0 2px #fff, 0 0 0 4px #16a34a`
           : '0 1px 3px rgba(0,0,0,0.15)',
         flexShrink: 0,
         transition: 'box-shadow 0.15s',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: '13px',
+        color: checkColor,
       }}
-    />
+    >
+      <AnimatePresence>
+        {isCopied && (
+          <motion.span
+            key="check"
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.5 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 25 }}
+          >
+            ✓
+          </motion.span>
+        )}
+      </AnimatePresence>
+    </motion.button>
   )
 }
 
@@ -270,10 +292,12 @@ export default function ColorPickerPanel() {
   const [pickedColors, setPickedColors]   = useState<ColorInfo[]>([])
   const [pageColors, setPageColors]       = useState<ColorInfo[]>([])
   const [selectedColor, setSelectedColor] = useState<ColorInfo | null>(null)
+  const [copiedHex, setCopiedHex]         = useState<string | null>(null)
   const [scanning, setScanning]           = useState(false)
   const [picking, setPicking]             = useState(false)
   const [scanDone, setScanDone]           = useState(false)
-  const containerRef = useRef<HTMLDivElement>(null)
+  const containerRef  = useRef<HTMLDivElement>(null)
+  const copyTimerRef  = useRef<ReturnType<typeof setTimeout>>()
 
   const eyeDropperSupported = 'EyeDropper' in window
 
@@ -319,8 +343,13 @@ export default function ColorPickerPanel() {
     })
   }, [scanning])
 
-  // ── 색상 클릭 ───────────────────────────────────────────────────────
+  // ── 색상 클릭 → HEX 복사 ────────────────────────────────────────────
   const handleSwatchClick = useCallback((color: ColorInfo) => {
+    navigator.clipboard.writeText(color.hex.toUpperCase()).catch(() => {})
+    setCopiedHex(color.hex)
+    clearTimeout(copyTimerRef.current)
+    copyTimerRef.current = setTimeout(() => setCopiedHex(null), 1500)
+    // 상세 팝오버는 다른 색상 선택 시 갱신
     setSelectedColor((prev) => (prev?.hex === color.hex ? null : color))
   }, [])
 
@@ -460,7 +489,7 @@ export default function ColorPickerPanel() {
                   <div key={color.hex} style={{ position: 'relative' }}>
                     <Swatch
                       color={color}
-                      isSelected={selectedColor?.hex === color.hex}
+                      isCopied={copiedHex === color.hex}
                       onClick={() => handleSwatchClick(color)}
                     />
                   </div>
@@ -516,7 +545,7 @@ export default function ColorPickerPanel() {
                   <Swatch
                     key={color.hex}
                     color={color}
-                    isSelected={selectedColor?.hex === color.hex}
+                    isCopied={copiedHex === color.hex}
                     onClick={() => handleSwatchClick(color)}
                   />
                 ))}
