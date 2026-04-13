@@ -7,9 +7,10 @@ interface WanderingPetContainerProps {
   initialX?: number
   onXChange?: (x: number) => void
   resetTrigger?: number
+  forcedX?: number  // 다른 탭에서 원위치 명령 시 강제 이동
 }
 
-export default function WanderingPetContainer({ children, isActive, initialX, onXChange, resetTrigger }: WanderingPetContainerProps) {
+export default function WanderingPetContainer({ children, isActive, initialX, onXChange, resetTrigger, forcedX }: WanderingPetContainerProps) {
   const [x, setX] = useState(0)
   const [initialized, setInitialized] = useState(false)
   const [isWalking, setIsWalking] = useState(false)
@@ -27,6 +28,21 @@ export default function WanderingPetContainer({ children, isActive, initialX, on
     xRef.current = startX
     setInitialized(true)
   }, []) // initialX는 최초 1회만 사용
+
+  // forcedX가 변경되면 해당 위치로 즉시 이동 (다른 탭의 원위치 명령 동기화)
+  const forcedXRef = useRef(forcedX)
+  useEffect(() => {
+    if (forcedX === undefined || forcedX === forcedXRef.current) return
+    forcedXRef.current = forcedX
+    if (!initialized) return
+    if (walkTimerRef.current) {
+      clearTimeout(walkTimerRef.current)
+      walkTimerRef.current = null
+    }
+    setIsWalking(false)
+    setX(forcedX)
+    xRef.current = forcedX
+  }, [forcedX, initialized])
 
   // resetTrigger가 변경되면 기본 우측 위치로 이동
   const resetTriggerRef = useRef(resetTrigger)

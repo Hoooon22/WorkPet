@@ -67,6 +67,7 @@ export default function PetOverlay() {
   const [isFreshSummon, setIsFreshSummon] = useState(false)
   const [wanderEnabled, setWanderEnabled] = useState(true)
   const [resetTrigger, setResetTrigger] = useState(0)
+  const [forcedX, setForcedX] = useState<number | undefined>(undefined)
   const [showAreaSelector, setShowAreaSelector] = useState(false)
 
   // ---- 브리핑 탭 전용: 수동 전체 브리핑 (알람 시스템과 독립) ----
@@ -95,7 +96,7 @@ export default function PetOverlay() {
 
   // ---- 탭 전환/새 탭: storage에서 펫 상태 복원 ----
   useEffect(() => {
-    chrome.storage.local.get(['petBriefing', 'petDismissed', 'petState', 'petX', 'activePet', 'orbitSignedIn'], (result) => {
+    chrome.storage.local.get(['petBriefing', 'petDismissed', 'petState', 'petX', 'activePet', 'orbitSignedIn', 'wanderEnabled'], (result) => {
       // 로그아웃 상태면 펫 미등장
       if (!result.orbitSignedIn) return
       setIsSignedIn(true)
@@ -103,6 +104,8 @@ export default function PetOverlay() {
       if (result.activePet) setActivePet(result.activePet as GachaResult)
       // 위치 복원
       if (result.petX !== undefined) setInitialX(result.petX as number)
+      // 돌아다니기 상태 복원
+      if (result.wanderEnabled !== undefined) setWanderEnabled(result.wanderEnabled as boolean)
       // petDismissed가 명시적으로 true가 아닌 한 펫 표시 (소환 상태 유지)
       if (!result.petDismissed) {
         setIsVisible(true)
@@ -155,6 +158,15 @@ export default function PetOverlay() {
         // 다른 탭에서 브리핑 확인한 경우 이 탭도 idle로 동기화
         setPetState('idle')
         setBubbleOpen(false)
+      }
+      // 다른 탭에서 돌아다니기 토글 → 이 탭도 동기화
+      if (changes.wanderEnabled?.newValue !== undefined) {
+        setWanderEnabled(changes.wanderEnabled.newValue as boolean)
+      }
+      // 다른 탭에서 원위치 명령 → 이 탭도 강제 이동
+      if (changes.petReturnHome?.newValue !== undefined) {
+        const homeX = window.innerWidth - 88
+        setForcedX(homeX)
       }
     }
     chrome.storage.onChanged.addListener(listener)
@@ -425,13 +437,21 @@ export default function PetOverlay() {
     setTimeout(() => setShowAreaSelector(true), 320)
   }, [])
 
-  // ---- 원위치 이동: 돌아다니기 비활성화 + 우측 하단으로 복귀 ----
+  // ---- 원위치 이동: 돌아다니기 비활성화 + 우측 하단으로 복귀 (전 탭 동기화) ----
   const handleReturnHome = useCallback(() => {
     setWanderEnabled(false)
     setResetTrigger((prev) => prev + 1)
     const defaultX = window.innerWidth - 88
-    chrome.storage.local.set({ petX: defaultX })
+    chrome.storage.local.set({ petX: defaultX, wanderEnabled: false, petReturnHome: Date.now() })
   }, [])
+
+  // ---- wanderEnabled 변경 시 storage에 저장 (전 탭 동기화) ----
+  const prevWanderEnabledRef = useRef(wanderEnabled)
+  useEffect(() => {
+    if (prevWanderEnabledRef.current === wanderEnabled) return
+    prevWanderEnabledRef.current = wanderEnabled
+    chrome.storage.local.set({ wanderEnabled })
+  }, [wanderEnabled])
 
   // ---- 펫 위치 변경 시 storage에 저장 ----
   const handleXChange = useCallback((x: number) => {
@@ -482,7 +502,7 @@ export default function PetOverlay() {
         pointerEvents: 'none',
       }}
     >
-      <WanderingPetContainer isActive={petState === 'idle' && !bubbleOpen && wanderEnabled} initialX={initialX} onXChange={handleXChange} resetTrigger={resetTrigger}>
+      <WanderingPetContainer isActive={petState === 'idle' && !bubbleOpen && wanderEnabled} initialX={initialX} onXChange={handleXChange} resetTrigger={resetTrigger} forcedX={forcedX}>
         {({ isWalking, direction, x }) => {
           // 말풍선(maxWidth 220px)이 오른쪽에서 잘릴 것 같으면 왼쪽으로 뒤집기
           // 펫 위치(x) + 펫 너비(64) + 말풍선 오프셋(~51) + 말풍선 최대 너비(220) > 화면 너비
