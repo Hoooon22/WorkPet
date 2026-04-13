@@ -3,7 +3,7 @@
  * 브라우저 경험 향상 도구 모음
  */
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { CaptureScreenshotResponse } from '../../types/messages'
 import FocusTimerPanel, { type FocusTimerState } from './FocusTimerPanel'
@@ -167,6 +167,14 @@ const listItemVariants = {
   },
 }
 
+const DEFAULT_ORDER = TOOLS.map((t) => t.id)
+const STORAGE_KEY = 'orbitToolsConfig'
+
+interface ToolsConfig {
+  order: string[]
+  hidden: string[]
+}
+
 interface ToastState {
   toolId: string
   label: string
@@ -183,6 +191,11 @@ interface Props {
 
 export default function BrowserToolsPanel({ onCloseBubble, onStartAreaCapture, focusTimer, onTimerStart, onTimerTogglePause, onTimerReset }: Props) {
   const [toast, setToast] = useState<ToastState | null>(null)
+
+  // ── 도구 커스터마이징 상태 ──
+  const [editMode, setEditMode] = useState(false)
+  const [toolOrder, setToolOrder] = useState<string[]>(DEFAULT_ORDER)
+  const [hiddenTools, setHiddenTools] = useState<string[]>([])
 
   // 검색
   const [searchOpen, setSearchOpen] = useState(false)
@@ -214,6 +227,67 @@ export default function BrowserToolsPanel({ onCloseBubble, onStartAreaCapture, f
 
   // 색상 추출
   const [colorPickerOpen, setColorPickerOpen] = useState(false)
+
+  // ── 스토리지에서 도구 설정 로드 ──
+  useEffect(() => {
+    chrome.storage.local.get([STORAGE_KEY], (result) => {
+      const config = result[STORAGE_KEY] as ToolsConfig | undefined
+      if (!config) return
+      // order: 새로 추가된 도구 ID는 뒤에 붙임
+      const knownIds = new Set(DEFAULT_ORDER)
+      const savedOrder = config.order.filter((id) => knownIds.has(id))
+      const newIds = DEFAULT_ORDER.filter((id) => !savedOrder.includes(id))
+      setToolOrder([...savedOrder, ...newIds])
+      setHiddenTools((config.hidden ?? []).filter((id) => knownIds.has(id)))
+    })
+  }, [])
+
+  const saveConfig = useCallback((order: string[], hidden: string[]) => {
+    chrome.storage.local.set({ [STORAGE_KEY]: { order, hidden } })
+  }, [])
+
+  const handleMoveUp = useCallback((id: string) => {
+    setToolOrder((prev) => {
+      const idx = prev.indexOf(id)
+      if (idx <= 0) return prev
+      const next = [...prev]
+      ;[next[idx - 1], next[idx]] = [next[idx], next[idx - 1]]
+      saveConfig(next, hiddenTools)
+      return next
+    })
+  }, [hiddenTools, saveConfig])
+
+  const handleMoveDown = useCallback((id: string) => {
+    setToolOrder((prev) => {
+      const idx = prev.indexOf(id)
+      if (idx < 0 || idx >= prev.length - 1) return prev
+      const next = [...prev]
+      ;[next[idx], next[idx + 1]] = [next[idx + 1], next[idx]]
+      saveConfig(next, hiddenTools)
+      return next
+    })
+  }, [hiddenTools, saveConfig])
+
+  const handleToggleHidden = useCallback((id: string) => {
+    setHiddenTools((prev) => {
+      const next = prev.includes(id) ? prev.filter((h) => h !== id) : [...prev, id]
+      saveConfig(toolOrder, next)
+      return next
+    })
+  }, [toolOrder, saveConfig])
+
+  const handleResetConfig = useCallback(() => {
+    setToolOrder(DEFAULT_ORDER)
+    setHiddenTools([])
+    chrome.storage.local.remove(STORAGE_KEY)
+  }, [])
+
+  // 표시 순서대로 정렬된 도구 배열 (edit 모드에서는 전체, 일반 모드에서는 hidden 제외)
+  const orderedTools = toolOrder
+    .map((id) => TOOLS.find((t) => t.id === id))
+    .filter(Boolean) as typeof TOOLS
+
+  const visibleTools = editMode ? orderedTools : orderedTools.filter((t) => !hiddenTools.includes(t.id))
 
   useEffect(() => {
     if (searchOpen) {
@@ -564,98 +638,309 @@ export default function BrowserToolsPanel({ onCloseBubble, onStartAreaCapture, f
 
       {/* ── 도구 그리드 영역 ── */}
       <div style={{ padding: '12px 16px 8px', position: 'relative' }}>
-        <p
-          style={{
-            margin: '0 0 10px',
-            fontSize: '11px',
-            fontWeight: 600,
-            color: '#6b7280',
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
-            fontFamily: 'sans-serif',
-          }}
-        >
-          브라우저 도구
-        </p>
-
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '7px',
-          }}
-        >
-          {TOOLS.map((tool) => (
+        {/* 헤더 + 편집 버튼 */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+          <p
+            style={{
+              margin: 0,
+              fontSize: '11px',
+              fontWeight: 600,
+              color: '#6b7280',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+              fontFamily: 'sans-serif',
+            }}
+          >
+            브라우저 도구
+          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            {editMode && (
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleResetConfig}
+                style={{
+                  all: 'unset',
+                  cursor: 'pointer',
+                  fontSize: '10px',
+                  fontWeight: 600,
+                  color: '#9ca3af',
+                  fontFamily: 'sans-serif',
+                  padding: '3px 8px',
+                  borderRadius: '5px',
+                  border: '1px solid #e5e7eb',
+                  background: '#f9fafb',
+                }}
+              >
+                초기화
+              </motion.button>
+            )}
             <motion.button
-              key={tool.id}
-              variants={listItemVariants}
-              whileHover={{ scale: 1.03, y: -1 }}
-              whileTap={{ scale: 0.96 }}
-              onClick={() => handleToolClick(tool)}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setEditMode((prev) => !prev)}
               style={{
                 all: 'unset',
-                boxSizing: 'border-box',
                 cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '9px 10px',
-                borderRadius: '10px',
-                background: isToolActive(tool.id) ? tool.borderColor : tool.bgColor,
-                border: `1px solid ${isToolActive(tool.id) ? tool.color : tool.borderColor}`,
-                position: 'relative',
+                fontSize: '10px',
+                fontWeight: 700,
+                color: editMode ? '#2563eb' : '#6b7280',
+                fontFamily: 'sans-serif',
+                padding: '3px 8px',
+                borderRadius: '5px',
+                border: `1px solid ${editMode ? '#bfdbfe' : '#e5e7eb'}`,
+                background: editMode ? '#eff6ff' : '#f9fafb',
+                transition: 'all 0.15s',
               }}
             >
-              <span style={{ fontSize: '18px', lineHeight: 1 }}>{tool.icon}</span>
-              <div style={{ flex: 1, overflow: 'hidden' }}>
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: '12px',
-                    fontWeight: 700,
-                    color: tool.color,
-                    fontFamily: 'sans-serif',
-                  }}
-                >
-                  {tool.label}
-                </p>
-                <p
-                  style={{
-                    margin: '1px 0 0',
-                    fontSize: '10px',
-                    color: '#9ca3af',
-                    fontFamily: 'sans-serif',
-                    lineHeight: 1.3,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {tool.description}
-                </p>
-              </div>
-              {!tool.available && (
-                <span
-                  style={{
-                    position: 'absolute',
-                    top: '4px',
-                    right: '6px',
-                    fontSize: '9px',
-                    fontWeight: 700,
-                    color: '#9ca3af',
-                    background: '#f3f4f6',
-                    borderRadius: '4px',
-                    padding: '1px 4px',
-                    fontFamily: 'sans-serif',
-                    letterSpacing: '0.02em',
-                  }}
-                >
-                  준비중
-                </span>
-              )}
+              {editMode ? '완료' : '⚙️ 편집'}
             </motion.button>
-          ))}
+          </div>
         </div>
+
+        {/* ── 편집 모드 ── */}
+        <AnimatePresence>
+          {editMode && (
+            <motion.div
+              key="edit-mode"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+              style={{ overflow: 'hidden', marginBottom: '10px' }}
+            >
+              <div
+                style={{
+                  background: '#f8faff',
+                  border: '1px solid #dbeafe',
+                  borderRadius: '10px',
+                  padding: '6px 8px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px',
+                }}
+              >
+                <p style={{
+                  margin: '0 0 6px',
+                  fontSize: '10px',
+                  color: '#6b7280',
+                  fontFamily: 'sans-serif',
+                  lineHeight: 1.5,
+                }}>
+                  버튼 순서를 바꾸거나 숨길 수 있어요
+                </p>
+                {orderedTools.map((tool, idx) => {
+                  const isHidden = hiddenTools.includes(tool.id)
+                  return (
+                    <div
+                      key={tool.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '6px 8px',
+                        borderRadius: '8px',
+                        background: isHidden ? '#f3f4f6' : '#fff',
+                        border: `1px solid ${isHidden ? '#e5e7eb' : tool.borderColor}`,
+                        opacity: isHidden ? 0.55 : 1,
+                        transition: 'all 0.15s',
+                      }}
+                    >
+                      {/* 아이콘 + 이름 */}
+                      <span style={{ fontSize: '15px', lineHeight: 1, flexShrink: 0 }}>{tool.icon}</span>
+                      <p style={{
+                        margin: 0,
+                        flex: 1,
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        color: isHidden ? '#9ca3af' : tool.color,
+                        fontFamily: 'sans-serif',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}>
+                        {tool.label}
+                        {!tool.available && (
+                          <span style={{ marginLeft: '4px', fontSize: '9px', color: '#d1d5db', fontWeight: 400 }}>(준비중)</span>
+                        )}
+                      </p>
+
+                      {/* 순서 변경 버튼 */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flexShrink: 0 }}>
+                        <button
+                          onClick={() => handleMoveUp(tool.id)}
+                          disabled={idx === 0}
+                          style={{
+                            all: 'unset',
+                            cursor: idx === 0 ? 'default' : 'pointer',
+                            width: '18px',
+                            height: '14px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            borderRadius: '3px',
+                            background: idx === 0 ? 'transparent' : '#e5e7eb',
+                            color: idx === 0 ? '#d1d5db' : '#374151',
+                            fontSize: '9px',
+                            lineHeight: 1,
+                            fontFamily: 'sans-serif',
+                          }}
+                          title="위로"
+                        >▲</button>
+                        <button
+                          onClick={() => handleMoveDown(tool.id)}
+                          disabled={idx === orderedTools.length - 1}
+                          style={{
+                            all: 'unset',
+                            cursor: idx === orderedTools.length - 1 ? 'default' : 'pointer',
+                            width: '18px',
+                            height: '14px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            borderRadius: '3px',
+                            background: idx === orderedTools.length - 1 ? 'transparent' : '#e5e7eb',
+                            color: idx === orderedTools.length - 1 ? '#d1d5db' : '#374151',
+                            fontSize: '9px',
+                            lineHeight: 1,
+                            fontFamily: 'sans-serif',
+                          }}
+                          title="아래로"
+                        >▼</button>
+                      </div>
+
+                      {/* 표시/숨김 토글 */}
+                      <button
+                        onClick={() => handleToggleHidden(tool.id)}
+                        title={isHidden ? '표시하기' : '숨기기'}
+                        style={{
+                          all: 'unset',
+                          cursor: 'pointer',
+                          width: '28px',
+                          height: '16px',
+                          borderRadius: '999px',
+                          background: isHidden ? '#e5e7eb' : '#2563eb',
+                          position: 'relative',
+                          flexShrink: 0,
+                          transition: 'background 0.2s',
+                        }}
+                      >
+                        <span
+                          style={{
+                            position: 'absolute',
+                            top: '2px',
+                            left: isHidden ? '2px' : '14px',
+                            width: '12px',
+                            height: '12px',
+                            borderRadius: '50%',
+                            background: '#fff',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                            transition: 'left 0.2s',
+                          }}
+                        />
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ── 일반 도구 그리드 ── */}
+        {!editMode && (
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '7px',
+            }}
+          >
+            {visibleTools.map((tool) => (
+              <motion.button
+                key={tool.id}
+                variants={listItemVariants}
+                whileHover={{ scale: 1.03, y: -1 }}
+                whileTap={{ scale: 0.96 }}
+                onClick={() => handleToolClick(tool)}
+                style={{
+                  all: 'unset',
+                  boxSizing: 'border-box',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '9px 10px',
+                  borderRadius: '10px',
+                  background: isToolActive(tool.id) ? tool.borderColor : tool.bgColor,
+                  border: `1px solid ${isToolActive(tool.id) ? tool.color : tool.borderColor}`,
+                  position: 'relative',
+                }}
+              >
+                <span style={{ fontSize: '18px', lineHeight: 1 }}>{tool.icon}</span>
+                <div style={{ flex: 1, overflow: 'hidden' }}>
+                  <p
+                    style={{
+                      margin: 0,
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      color: tool.color,
+                      fontFamily: 'sans-serif',
+                    }}
+                  >
+                    {tool.label}
+                  </p>
+                  <p
+                    style={{
+                      margin: '1px 0 0',
+                      fontSize: '10px',
+                      color: '#9ca3af',
+                      fontFamily: 'sans-serif',
+                      lineHeight: 1.3,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {tool.description}
+                  </p>
+                </div>
+                {!tool.available && (
+                  <span
+                    style={{
+                      position: 'absolute',
+                      top: '4px',
+                      right: '6px',
+                      fontSize: '9px',
+                      fontWeight: 700,
+                      color: '#9ca3af',
+                      background: '#f3f4f6',
+                      borderRadius: '4px',
+                      padding: '1px 4px',
+                      fontFamily: 'sans-serif',
+                      letterSpacing: '0.02em',
+                    }}
+                  >
+                    준비중
+                  </span>
+                )}
+              </motion.button>
+            ))}
+            {visibleTools.length === 0 && (
+              <div style={{
+                gridColumn: '1 / -1',
+                textAlign: 'center',
+                padding: '20px 0 8px',
+                color: '#9ca3af',
+                fontSize: '12px',
+                fontFamily: 'sans-serif',
+              }}>
+                모든 도구가 숨겨져 있어요<br />
+                <span style={{ fontSize: '11px', color: '#d1d5db' }}>⚙️ 편집에서 도구를 표시해 주세요</span>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* 토스트 메시지 */}
         <AnimatePresence>

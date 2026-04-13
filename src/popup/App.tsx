@@ -158,7 +158,7 @@ export default function App() {
         </div>
         <div>
           <h1 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#111827' }}>Work-Pet: Orbit</h1>
-          <p style={{ margin: 0, fontSize: '11px', color: '#6b7280' }}>AI 펫 비서 v0.1.2</p>
+          <p style={{ margin: 0, fontSize: '11px', color: '#6b7280' }}>AI 펫 비서 v0.1.6</p>
         </div>
       </div>
 
