@@ -4,6 +4,7 @@ functions/node_modules/
 
 # Build output
 dist/
+work-pet-orbit-*.zip
 
 # TypeScript build info
 *.tsbuildinfo
