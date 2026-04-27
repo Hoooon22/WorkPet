@@ -2,8 +2,9 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Lottie from 'lottie-react'
 import type { LottieRefCurrentProps } from 'lottie-react'
 import { useRef, useCallback, useEffect } from 'react'
-import type { PetState, GachaResult } from '../../types/messages'
+import type { PetState, GachaResult, LottiePetId, SvgPetId } from '../../types/messages'
 import { PET_LOTTIE_MAP } from './MondayGacha'
+import SvgPet, { isSvgPetId } from './SvgPet'
 
 interface OrbitCharacterProps {
   state: PetState
@@ -63,9 +64,12 @@ export default function OrbitCharacter({
   // 마운트 시점의 값을 캡처 — 소환 직후 등장 애니메이션에만 사용
   const wasFreshSummon = useRef(isFreshSummon ?? false)
 
+  // 활성 가챠 펫이 SVG 종이면 SvgPet으로 렌더, 아니면 Lottie로 렌더
+  const isSvgActivePet = !!activePet && isSvgPetId(activePet.petId)
+
   const getLottieAnimation = () => {
-    // 가챠 펫이 선택된 경우: 해당 펫의 Lottie 사용 (단일 애니메이션으로 모든 상태 대응)
-    if (activePet) return PET_LOTTIE_MAP[activePet.petId]
+    // 가챠 펫(Lottie 종)이 선택된 경우: 해당 펫의 Lottie 사용
+    if (activePet && !isSvgActivePet) return PET_LOTTIE_MAP[activePet.petId as LottiePetId]
     // 기본 캐릭터: 상태별 Lottie (walking.json은 다른 캐릭터 전용이므로 사용 안 함)
     switch (state) {
       case 'alert': return petAlert
@@ -248,7 +252,27 @@ export default function OrbitCharacter({
                 WebkitUserSelect: 'none',
               }}
             >
-              {Object.keys(getLottieAnimation()).length === 0 ? (
+              {isSvgActivePet ? (
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    filter: `drop-shadow(0px 6px 12px ${activePet!.glowColor}88) drop-shadow(0px 10px 8px rgba(0,0,0,0.2))`,
+                  }}
+                >
+                  {/* 외곽 motion.div가 walk/idle/sleepy/morning을 책임지므로
+                      SvgPet 자체 액션은 비활성('idle')으로 둔다. */}
+                  <SvgPet
+                    kind={activePet!.petId as SvgPetId}
+                    action="idle"
+                    direction={direction}
+                    mood={isSleepy ? 'sleepy' : 'happy'}
+                    size={64}
+                  />
+                </motion.div>
+              ) : Object.keys(getLottieAnimation()).length === 0 ? (
                 <motion.div
                   whileHover={{ scale: 1.12 }}
                   whileTap={{ scale: 0.92 }}

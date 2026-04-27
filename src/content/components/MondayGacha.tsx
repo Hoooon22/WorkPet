@@ -21,14 +21,21 @@ import rabbitLottie   from '../../assets/lottie/pets/rabbit.json'
 import hedgehogLottie from '../../assets/lottie/pets/hedgehog.json'
 import raccoonLottie  from '../../assets/lottie/pets/raccoon.json'
 import unicornLottie  from '../../assets/lottie/pets/unicorn.json'
+import SvgPet from './SvgPet'
+import type { LottiePetId, SvgPetId } from '../../types/messages'
 
-export const PET_LOTTIE_MAP = {
+// SVG 펫은 Lottie가 없으므로 PET_LOTTIE_MAP에서는 LottiePetId만 다룬다.
+export const PET_LOTTIE_MAP: Record<LottiePetId, object> = {
   cat:      catLottie,
   rabbit:   rabbitLottie,
   hedgehog: hedgehogLottie,
   raccoon:  raccoonLottie,
   unicorn:  unicornLottie,
-} as const
+}
+
+function isLottiePetId(id: string): id is LottiePetId {
+  return id in PET_LOTTIE_MAP
+}
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -59,58 +66,57 @@ interface BuildupTierConfig {
   vibDelay: number   // 흔들림 시작 시점 (duration 비율 0~1)
 }
 
-// ─── Mock Data ──────────────────────────────────────────────────────────────
+// ─── Pet roster (13 마리) ──────────────────────────────────────────────────
+//
+//   COMMON   (55%) — 신규 SVG 4 종: chick / frog / turtle / bear
+//   RARE     (25%) — 기존 Lottie 3 종: cat / rabbit / hedgehog
+//   EPIC     (15%) — 신규 SVG 4 종: fox / penguin / owl / octopus
+//   LEGENDARY (5%) — 기존 Lottie 2 종: raccoon / unicorn
+
+const COMMON_PARTICLES = ['#9ca3af', '#d1d5db', '#f3f4f6']
+const RARE_PARTICLES   = ['#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe']
+const EPIC_PARTICLES   = ['#7c3aed', '#a78bfa', '#c4b5fd', '#f0abfc', '#e879f9']
+const LEGEND_PARTICLES = ['#fbbf24', '#f97316', '#ef4444', '#ec4899', '#a855f7', '#fff', '#fde68a']
+
+const COMMON_BADGE = 'linear-gradient(135deg, #4b5563 0%, #9ca3af 100%)'
+const RARE_BADGE   = 'linear-gradient(135deg, #1d4ed8 0%, #60a5fa 50%, #bfdbfe 100%)'
+const EPIC_BADGE   = 'linear-gradient(135deg, #6d28d9 0%, #a78bfa 50%, #ddd6fe 100%)'
+const LEGEND_BADGE = 'linear-gradient(135deg, #f59e0b 0%, #ef4444 30%, #ec4899 65%, #8b5cf6 100%)'
 
 const PET_RESULTS: PetResult[] = [
-  {
-    grade: 'COMMON',
-    petId: 'cat',
-    name: '동네 고양이',
-    glowColor: '#f97316',
-    badgeGradient: 'linear-gradient(135deg, #92400e 0%, #f97316 100%)',
-    particleColors: ['#f97316', '#fb923c', '#fed7aa'],
-  },
-  {
-    grade: 'COMMON',
-    petId: 'rabbit',
-    name: '수습 토끼',
-    glowColor: '#9ca3af',
-    badgeGradient: 'linear-gradient(135deg, #4b5563 0%, #9ca3af 100%)',
-    particleColors: ['#9ca3af', '#d1d5db', '#f3f4f6'],
-  },
-  {
-    grade: 'RARE',
-    petId: 'hedgehog',
-    name: '성실한 고슴도치',
-    glowColor: '#60a5fa',
-    badgeGradient: 'linear-gradient(135deg, #1d4ed8 0%, #60a5fa 50%, #bfdbfe 100%)',
-    particleColors: ['#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe'],
-  },
-  {
-    grade: 'EPIC',
-    petId: 'raccoon',
-    name: '전략가 너구리',
-    glowColor: '#a78bfa',
-    badgeGradient: 'linear-gradient(135deg, #6d28d9 0%, #a78bfa 50%, #ddd6fe 100%)',
-    particleColors: ['#7c3aed', '#a78bfa', '#c4b5fd', '#f0abfc', '#e879f9'],
-  },
-  {
-    grade: 'LEGENDARY',
-    petId: 'unicorn',
-    name: 'CEO 유니콘',
-    glowColor: '#fbbf24',
-    badgeGradient: 'linear-gradient(135deg, #f59e0b 0%, #ef4444 30%, #ec4899 65%, #8b5cf6 100%)',
-    particleColors: ['#fbbf24', '#f97316', '#ef4444', '#ec4899', '#a855f7', '#fff', '#fde68a'],
-  },
+  // ── COMMON (신규 SVG) ─────────────────────────────────────────────
+  { grade: 'COMMON', petId: 'chick',  name: '의욕 가득 병아리', glowColor: '#eab308', badgeGradient: COMMON_BADGE, particleColors: COMMON_PARTICLES },
+  { grade: 'COMMON', petId: 'frog',   name: '통통 튀는 개구리', glowColor: '#16a34a', badgeGradient: COMMON_BADGE, particleColors: COMMON_PARTICLES },
+  { grade: 'COMMON', petId: 'turtle', name: '꾸준한 거북이',    glowColor: '#4d7c0f', badgeGradient: COMMON_BADGE, particleColors: COMMON_PARTICLES },
+  { grade: 'COMMON', petId: 'bear',   name: '느긋한 곰',        glowColor: '#a16207', badgeGradient: COMMON_BADGE, particleColors: COMMON_PARTICLES },
+
+  // ── RARE / 유니크 (기존 Lottie) ───────────────────────────────────
+  { grade: 'RARE', petId: 'cat',      name: '동네 고양이',      glowColor: '#f97316', badgeGradient: RARE_BADGE, particleColors: RARE_PARTICLES },
+  { grade: 'RARE', petId: 'rabbit',   name: '수습 토끼',        glowColor: '#9ca3af', badgeGradient: RARE_BADGE, particleColors: RARE_PARTICLES },
+  { grade: 'RARE', petId: 'hedgehog', name: '성실한 고슴도치',  glowColor: '#60a5fa', badgeGradient: RARE_BADGE, particleColors: RARE_PARTICLES },
+
+  // ── EPIC (신규 SVG) ───────────────────────────────────────────────
+  { grade: 'EPIC', petId: 'fox',     name: '재빠른 여우',     glowColor: '#f97316', badgeGradient: EPIC_BADGE, particleColors: EPIC_PARTICLES },
+  { grade: 'EPIC', petId: 'penguin', name: '격식 있는 펭귄',  glowColor: '#1f2937', badgeGradient: EPIC_BADGE, particleColors: EPIC_PARTICLES },
+  { grade: 'EPIC', petId: 'owl',     name: '야근 버디 부엉이', glowColor: '#78350f', badgeGradient: EPIC_BADGE, particleColors: EPIC_PARTICLES },
+  { grade: 'EPIC', petId: 'octopus', name: '멀티태스커 문어', glowColor: '#a855f7', badgeGradient: EPIC_BADGE, particleColors: EPIC_PARTICLES },
+
+  // ── LEGENDARY (기존 Lottie) ───────────────────────────────────────
+  { grade: 'LEGENDARY', petId: 'raccoon', name: '전략가 너구리', glowColor: '#a78bfa', badgeGradient: LEGEND_BADGE, particleColors: LEGEND_PARTICLES },
+  { grade: 'LEGENDARY', petId: 'unicorn', name: 'CEO 유니콘',    glowColor: '#fbbf24', badgeGradient: LEGEND_BADGE, particleColors: LEGEND_PARTICLES },
 ]
+
+function pickByGrade(grade: PetResult['grade']): PetResult {
+  const candidates = PET_RESULTS.filter(p => p.grade === grade)
+  return candidates[Math.floor(Math.random() * candidates.length)]
+}
 
 function pickRandomResult(): PetResult {
   const roll = Math.random() * 100
-  if (roll < 5)  return PET_RESULTS[4] // LEGENDARY  5%  (유니콘)
-  if (roll < 20) return PET_RESULTS[3] // EPIC      15%  (너구리)
-  if (roll < 50) return PET_RESULTS[2] // RARE      30%  (고슴도치)
-  if (roll < 75) return PET_RESULTS[1] // COMMON    25%  (토끼)
-  return PET_RESULTS[0]                // COMMON    25%  (고양이)
+  if (roll < 5)  return pickByGrade('LEGENDARY') //  5%
+  if (roll < 20) return pickByGrade('EPIC')      // 15%
+  if (roll < 45) return pickByGrade('RARE')      // 25%
+  return pickByGrade('COMMON')                   // 55%
 }
 
 // ─── Buildup tier configs ────────────────────────────────────────────────────
@@ -596,12 +602,16 @@ function RevealedContent({ result, particles, onSummon }: RevealedContentProps) 
           zIndex:       1,
         }}
       >
-        <Lottie
-          animationData={PET_LOTTIE_MAP[result.petId]}
-          loop={true}
-          autoplay={true}
-          style={{ width: '120px', height: '120px' }}
-        />
+        {isLottiePetId(result.petId) ? (
+          <Lottie
+            animationData={PET_LOTTIE_MAP[result.petId]}
+            loop={true}
+            autoplay={true}
+            style={{ width: '120px', height: '120px' }}
+          />
+        ) : (
+          <SvgPet kind={result.petId as SvgPetId} action="dance" size={120} />
+        )}
 
         {/* 회전 링 장식 */}
         <motion.div
@@ -774,12 +784,16 @@ function SummoningPet({ result, onComplete }: { result: PetResult; onComplete: (
         pointerEvents:  'none',
       }}
     >
-      <Lottie
-        animationData={PET_LOTTIE_MAP[result.petId]}
-        loop={true}
-        autoplay={true}
-        style={{ width: '120px', height: '120px' }}
-      />
+      {isLottiePetId(result.petId) ? (
+        <Lottie
+          animationData={PET_LOTTIE_MAP[result.petId]}
+          loop={true}
+          autoplay={true}
+          style={{ width: '120px', height: '120px' }}
+        />
+      ) : (
+        <SvgPet kind={result.petId as SvgPetId} action="idle" size={120} />
+      )}
     </motion.div>
   )
 }

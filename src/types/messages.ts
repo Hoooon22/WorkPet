@@ -71,9 +71,15 @@ export interface GeminiResponse {
 export type PetState = 'idle' | 'alert' | 'dismissed'
 
 // 가챠로 뽑은 펫 정보 (chrome.storage.local에 저장)
+// petId: Lottie 펫 5종 + SVG 펫 8종 = 총 13종
+// (hamster/beaver Lottie 자산은 디자인 번들에서 깨진 상태로 와서 제외됨)
+export type LottiePetId = 'cat' | 'rabbit' | 'hedgehog' | 'raccoon' | 'unicorn'
+export type SvgPetId    = 'fox' | 'frog' | 'penguin' | 'turtle' | 'owl' | 'octopus' | 'chick' | 'bear'
+export type PetId       = LottiePetId | SvgPetId
+
 export interface GachaResult {
   grade: 'COMMON' | 'RARE' | 'EPIC' | 'LEGENDARY'
-  petId: 'cat' | 'rabbit' | 'hedgehog' | 'raccoon' | 'unicorn'
+  petId: PetId
   name: string
   glowColor: string
   badgeGradient: string
