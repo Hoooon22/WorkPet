@@ -503,7 +503,7 @@ export default function PetOverlay() {
       }}
     >
       <WanderingPetContainer isActive={petState === 'idle' && !bubbleOpen && wanderEnabled} initialX={initialX} onXChange={handleXChange} resetTrigger={resetTrigger} forcedX={forcedX}>
-        {({ isWalking, direction, x }) => {
+        {({ isWalking, direction, x, dragControls, isDragging }) => {
           // 말풍선(maxWidth 220px)이 오른쪽에서 잘릴 것 같으면 왼쪽으로 뒤집기
           // 펫 위치(x) + 펫 너비(64) + 말풍선 오프셋(~51) + 말풍선 최대 너비(220) > 화면 너비
           const bubbleAlign = x + 64 + 51 + 220 > window.innerWidth ? 'left' : 'right'
@@ -563,6 +563,8 @@ export default function PetOverlay() {
               isSleepy={isSleepy}
               isMorningGreeting={isMorningGreeting}
               wanderEnabled={wanderEnabled}
+              dragControls={dragControls}
+              isDragging={isDragging}
             />
 
             {import.meta.env.DEV && (

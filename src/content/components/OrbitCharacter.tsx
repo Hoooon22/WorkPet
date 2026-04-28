@@ -1,4 +1,4 @@
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, type DragControls } from 'framer-motion'
 import Lottie from 'lottie-react'
 import type { LottieRefCurrentProps } from 'lottie-react'
 import { useRef, useCallback, useEffect } from 'react'
@@ -16,6 +16,8 @@ interface OrbitCharacterProps {
   isSleepy?: boolean
   isMorningGreeting?: boolean
   wanderEnabled?: boolean
+  dragControls?: DragControls
+  isDragging?: boolean
 }
 
 // Lottie JSON 임포트
@@ -60,6 +62,7 @@ function ZzzParticles() {
 export default function OrbitCharacter({
   state, onClick, direction = 'left', isWalking = false,
   activePet, isFreshSummon, isSleepy, isMorningGreeting, wanderEnabled = true,
+  dragControls, isDragging = false,
 }: OrbitCharacterProps) {
   // 마운트 시점의 값을 캡처 — 소환 직후 등장 애니메이션에만 사용
   const wasFreshSummon = useRef(isFreshSummon ?? false)
@@ -138,11 +141,13 @@ export default function OrbitCharacter({
   }
 
   // 바디 상태별 animate / transition
-  // 우선순위: 아침 인사 > 졸음 > 이동 중 > idle 바운스(돌아다니기 ON) > 완전 정지
+  // 우선순위: 아침 인사 > 졸음 > 드래그 중 > 이동 중 > idle 바운스(돌아다니기 ON) > 완전 정지
   const bodyAnimate = isMorningGreeting
     ? { rotate: [0, -22, 22, -14, 14, -6, 6, 0], scaleY: 1,           scaleX: 1,    y: 0 }
     : isSleepy
     ? { rotate: 0,                                scaleY: 0.90,         scaleX: 1.05, y: 2 }
+    : isDragging
+    ? { rotate: 0,                                scaleY: 1.06,         scaleX: 0.94, y: -4 }
     : isWalking
     ? { rotate: 0,                                scaleY: [1, 0.86, 1], scaleX: [1, 1.12, 1], y: [0, -8, 0] }
     : wanderEnabled
@@ -151,6 +156,8 @@ export default function OrbitCharacter({
 
   const bodyTransition = isMorningGreeting
     ? { duration: 1.1, ease: 'easeInOut' as const }
+    : isDragging
+    ? { type: 'spring' as const, stiffness: 380, damping: 22 }
     : isWalking
     ? { duration: 0.36, repeat: Infinity, ease: 'easeInOut' as const }
     : wanderEnabled && !isSleepy
@@ -238,9 +245,13 @@ export default function OrbitCharacter({
           >
             <div
               onClick={onClick}
+              onPointerDown={(e) => {
+                // 펫을 잡으면 드래그 컨트롤러에 위임 — 임계값 미만 이동 시 onClick 정상 발화
+                dragControls?.start(e)
+              }}
               aria-label="Work-Pet Lottie Character"
               style={{
-                cursor: 'pointer',
+                cursor: isDragging ? 'grabbing' : 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -250,6 +261,7 @@ export default function OrbitCharacter({
                 pointerEvents: 'auto',
                 userSelect: 'none',
                 WebkitUserSelect: 'none',
+                touchAction: 'none',
               }}
             >
               {isSvgActivePet ? (
