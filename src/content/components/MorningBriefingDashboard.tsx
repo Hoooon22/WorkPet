@@ -540,27 +540,31 @@ export default function MorningBriefingDashboard({
                       variants={listItemVariants}
                       whileHover={{ scale: 1.01 }}
                       whileTap={{ scale: 0.98 }}
-                      onClick={() => event.link && window.open(event.link, '_blank', 'noopener,noreferrer')}
+                      onClick={() => {
+                        if (event.link) window.open(event.link, '_blank', 'noopener,noreferrer')
+                        onEventRead(event.id)
+                      }}
                       style={{
                         position: 'relative',
                         display: 'flex',
                         alignItems: 'center',
                         gap: '8px',
-                        padding: '7px 28px 7px 10px',
+                        padding: '7px 36px 7px 10px',
                         borderRadius: '8px',
                         background: '#eff6ff',
                         border: '1px solid #bfdbfe',
-                        cursor: event.link ? 'pointer' : 'default',
+                        cursor: 'pointer',
                       }}
                     >
                       <button
                         onClick={(e) => { e.stopPropagation(); onEventRead(event.id) }}
                         title="읽음 처리"
                         style={{
-                          all: 'unset', position: 'absolute', top: '5px', right: '6px',
-                          width: '16px', height: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          all: 'unset', position: 'absolute', top: '50%', right: '6px',
+                          transform: 'translateY(-50%)',
+                          width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center',
                           borderRadius: '50%', background: 'rgba(147,197,253,0.4)', color: '#1e40af',
-                          fontSize: '10px', fontWeight: 700, cursor: 'pointer', lineHeight: 1, fontFamily: 'sans-serif',
+                          fontSize: '13px', fontWeight: 700, cursor: 'pointer', lineHeight: 1, fontFamily: 'sans-serif',
                         }}
                         onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = '#bfdbfe' }}
                         onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(147,197,253,0.4)' }}
@@ -597,17 +601,20 @@ export default function MorningBriefingDashboard({
                       variants={listItemVariants}
                       whileHover={{ scale: 1.01 }}
                       whileTap={{ scale: 0.98 }}
-                      onClick={() => email.link && window.open(email.link, '_blank', 'noopener,noreferrer')}
+                      onClick={() => {
+                        if (email.link) window.open(email.link, '_blank', 'noopener,noreferrer')
+                        onEmailRead(email.id)
+                      }}
                       style={{
                         position: 'relative',
                         display: 'flex',
                         alignItems: 'flex-start',
                         gap: '8px',
-                        padding: '7px 28px 7px 10px',
+                        padding: '7px 36px 7px 10px',
                         borderRadius: '8px',
                         background: email.isMondayEmail ? '#fef9ee' : '#f0fdf4',
                         border: email.isMondayEmail ? '1px solid #f59e0b' : '1px solid #bbf7d0',
-                        cursor: email.link ? 'pointer' : 'default',
+                        cursor: 'pointer',
                         boxShadow: email.isMondayEmail ? '0 0 0 1px rgba(245,158,11,0.15)' : 'none',
                       }}
                     >
@@ -615,12 +622,13 @@ export default function MorningBriefingDashboard({
                         onClick={(e) => { e.stopPropagation(); onEmailRead(email.id) }}
                         title="읽음 처리"
                         style={{
-                          all: 'unset', position: 'absolute', top: '5px', right: '6px',
-                          width: '16px', height: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          all: 'unset', position: 'absolute', top: '50%', right: '6px',
+                          transform: 'translateY(-50%)',
+                          width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center',
                           borderRadius: '50%',
                           background: email.isMondayEmail ? 'rgba(245,158,11,0.2)' : 'rgba(134,239,172,0.4)',
                           color: email.isMondayEmail ? '#92400e' : '#166534',
-                          fontSize: '10px', fontWeight: 700, cursor: 'pointer', lineHeight: 1, fontFamily: 'sans-serif',
+                          fontSize: '13px', fontWeight: 700, cursor: 'pointer', lineHeight: 1, fontFamily: 'sans-serif',
                         }}
                         onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = email.isMondayEmail ? '#fde68a' : '#bbf7d0' }}
                         onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = email.isMondayEmail ? 'rgba(245,158,11,0.2)' : 'rgba(134,239,172,0.4)' }}
