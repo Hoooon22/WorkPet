@@ -5,10 +5,18 @@
  * Phase 흐름:
  *   intro → selecting → [buildup] → cracking → revealed → summoning
  *
- * buildup: RARE 이상 등급 시 점층적 등급 연출
+ * buildup: RARE 이상 등급 시 점층적 등급 연출 — 메트로놈 같은 셰이크 대신
+ *          심장박동 리듬(쿵—쉬—쿵쿵—쉬—쿵)으로 긴장 누적
  *   RARE:      커먼연출 → 레어연출 → cracking
  *   EPIC:      커먼연출 → 레어연출 → 유니크연출 → cracking
  *   LEGENDARY: 커먼연출 → 레어연출 → 레전더리연출 → cracking
+ *
+ * cracking: 4막 구조로 긴장감 극대화
+ *   act 0 — 준비 (안쪽으로 움츠러들며 에너지 응축, 미세 떨림)
+ *   act 1 — 첫 균열 (날카로운 잭트, 첫 금이 빛과 함께)
+ *   act 2 — 확장 (격렬한 흔들림, 색수차, 금이 넓어짐)
+ *   act 3 — 정적 (모든 흔들림이 멎고 알만 빛나며 정지 — 터지기 직전의 침묵)
+ *   act 4 — 폭발 (시간 정지 링 → 백색 섬광 → 충격파)
  */
 
 import { useState, useMemo, useCallback, useEffect } from 'react'
@@ -118,6 +126,53 @@ function pickRandomResult(): PetResult {
   if (roll < 45) return pickByGrade('RARE')      // 25%
   return pickByGrade('COMMON')                   // 55%
 }
+
+// ─── 카메라 셰이크 / 색수차 keyframes ─────────────────────────────────────
+//
+// Shadow DOM 안에서만 유효하도록 wp- 접두사로 네임스페이스.
+// 셰이크는 메트로놈처럼 일정하지 않게 — 비균일 진폭/타이밍의 유기적 진동.
+
+const SHAKE_CSS = `
+@keyframes wp-shake-sm {
+  0%   { transform: translate(0,0); }
+  13%  { transform: translate(-0.6px, 0.9px); }
+  27%  { transform: translate(1.1px, -0.4px); }
+  41%  { transform: translate(-1.4px, 0.7px); }
+  58%  { transform: translate(0.8px, -1.2px); }
+  74%  { transform: translate(-0.9px, 0.5px); }
+  89%  { transform: translate(0.6px, -0.8px); }
+  100% { transform: translate(0,0); }
+}
+@keyframes wp-shake-md {
+  0%   { transform: translate(0,0); }
+  9%   { transform: translate(-2px, 1.4px); }
+  21%  { transform: translate(3px, -2.1px); }
+  34%  { transform: translate(-3.6px, 2.4px); }
+  47%  { transform: translate(2.7px, -3.2px); }
+  63%  { transform: translate(-3.9px, 2.8px); }
+  78%  { transform: translate(3.3px, -2.4px); }
+  92%  { transform: translate(-1.7px, 1.5px); }
+  100% { transform: translate(0,0); }
+}
+@keyframes wp-shake-lg {
+  0%   { transform: translate(0,0); }
+  7%   { transform: translate(-5px, 4px); }
+  16%  { transform: translate(8px, -6px); }
+  28%  { transform: translate(-10px, 7px); }
+  39%  { transform: translate(11px, -9px); }
+  52%  { transform: translate(-12px, 8px); }
+  64%  { transform: translate(9px, -10px); }
+  77%  { transform: translate(-7px, 6px); }
+  88%  { transform: translate(5px, -4px); }
+  100% { transform: translate(0,0); }
+}
+@keyframes wp-chroma-shake {
+  0%,100% { filter: none; }
+  20%     { filter: drop-shadow(1px 0 0 #ef4444) drop-shadow(-1px 0 0 #3b82f6); }
+  50%     { filter: drop-shadow(3px 0 0 #ef4444) drop-shadow(-3px 0 0 #3b82f6); }
+  80%     { filter: drop-shadow(1.5px 0 0 #ef4444) drop-shadow(-1.5px 0 0 #3b82f6); }
+}
+`
 
 // ─── Buildup tier configs ────────────────────────────────────────────────────
 
@@ -263,27 +318,6 @@ function EggSvg({ design, size = 120 }: { design: typeof EGG_DESIGNS[0]; size?: 
   )
 }
 
-function CrackOverlay({ size = 140 }: { size?: number }) {
-  const h = size * 1.22
-  return (
-    <svg
-      width={size}
-      height={h}
-      viewBox="0 0 100 122"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
-    >
-      <path d="M50 18 L43 42 L53 54 L38 75 L47 90 L41 108"
-        stroke="rgba(255,255,255,0.8)" strokeWidth="2" fill="none" strokeLinecap="round" />
-      <path d="M56 14 L64 38 L57 50 L68 68 L62 83"
-        stroke="rgba(255,255,255,0.55)" strokeWidth="1.2" fill="none" strokeLinecap="round" />
-      <path d="M39 30 L33 54 L43 64"
-        stroke="rgba(255,255,255,0.45)" strokeWidth="1" fill="none" strokeLinecap="round" />
-    </svg>
-  )
-}
-
 // ─── Buildup stage view ──────────────────────────────────────────────────────
 
 function BuildupStageView({
@@ -295,31 +329,34 @@ function BuildupStageView({
   egg: typeof EGG_DESIGNS[0]
   isLastTier: boolean
 }) {
-  const cfg        = BUILDUP_TIER_CONFIGS[tier]
-  const isUpgrade  = tier !== 'common'
+  const cfg       = BUILDUP_TIER_CONFIGS[tier]
+  const isUpgrade = tier !== 'common'
+  const sec       = cfg.duration / 1000
+
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const miniParticles = useMemo(() => genParticles(cfg.particleCount), [])
 
-  const a           = cfg.vibX
-  const r           = cfg.vibRotate
-  const vibDelaySec = (cfg.duration / 1000) * cfg.vibDelay
-  const vibDurSec   = (cfg.duration / 1000) * (1 - cfg.vibDelay)
-
-  // 진폭이 점점 커지는 흔들림 배열 (12포인트)
-  const xArr  = [0, 0, -(a*0.3), a*0.5, -(a*0.7), a*0.9, -a, a*0.85, -(a*0.65), a*0.4, -(a*0.18), 0]
-  const rArr  = [0, 0, -(r*0.3), r*0.5, -(r*0.7), r*0.9, -r, r*0.85, -(r*0.65), r*0.4, 0]
+  // 심장박동 리듬 — 정착 → 들숨 → 첫 박동 → 두번째 박동 → 마지막 강한 박동.
+  // 시점 배열은 0..1로 정규화되어 stage 전체에 걸쳐 펴짐.
+  // 메트로놈처럼 일정하지 않은 — *불규칙* 한 비트 사이의 정적이 긴장을 만든다.
+  const beatTimes  = [0, 0.18, 0.32, 0.40, 0.55, 0.62, 0.78, 0.86, 1.0]
+  const beatScale  = [1, 1.015, 1.04, 1.01, 1.06, 1.005, 1.09, 0.99, 1.02]
+  // 방향 미세 흔들림은 등급별로 진폭 차등
+  const swayUnit   = isUpgrade ? (tier === 'legendary' ? 4 : tier === 'epic' ? 3 : 2.2) : 1.2
+  const beatRotate = [0, swayUnit*0.6, -swayUnit*0.4, swayUnit*0.8, -swayUnit*0.6, swayUnit, -swayUnit*0.8, swayUnit*1.2, 0]
+  const beatY      = [0, -1, 1, -2, 2, -3, 3, -2, 0]
 
   return (
     <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
+      initial={{ opacity: 0, scale: 0.92 }}
+      animate={{ opacity: 1, scale: 1 }}
       // 마지막 단계: 아주 빠르게 fade → cracking이 즉시 이어받음
       // 중간 단계: 살짝 축소+fade → 다음 tier 플래시가 덮어씀
       exit={isLastTier
         ? { opacity: 0, transition: { duration: 0.08 } }
-        : { opacity: 0, scale: 0.92, transition: { duration: 0.14 } }
+        : { opacity: 0, scale: 0.96, transition: { duration: 0.18, ease: 'easeIn' } }
       }
-      transition={{ duration: 0.18 }}
+      transition={{ duration: 0.35, ease: [0.22, 0.9, 0.3, 1] }}
       style={{
         position:       'relative',
         display:        'flex',
@@ -329,21 +366,58 @@ function BuildupStageView({
         zIndex:         1,
       }}
     >
-      {/* 업그레이드 순간 전체 화면 플래시 */}
+      {/* 업그레이드 순간 전체 화면 티어 플래시 — 부드럽고 느린 페이드 */}
       {isUpgrade && (
         <motion.div
           initial={{ opacity: 0.7 }}
           animate={{ opacity: 0 }}
-          transition={{ duration: 0.55, ease: 'easeOut' }}
+          transition={{ duration: 0.95, ease: [0.2, 0.65, 0.3, 1] }}
           style={{
             position:      'fixed',
             inset:         0,
-            background:    `radial-gradient(ellipse at center, ${cfg.glowColor}55 0%, ${cfg.glowColor}22 50%, transparent 75%)`,
+            background:    `radial-gradient(ellipse at center, ${cfg.glowColor}55 0%, ${cfg.glowColor}22 40%, transparent 75%)`,
             pointerEvents: 'none',
+            mixBlendMode:  'screen',
             zIndex:        0,
           }}
         />
       )}
+
+      {/* 긴장 비네트 — 화면 가장자리가 천천히 닫혀오며 시선 집중 */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: tier === 'common' ? 0.25 : tier === 'rare' ? 0.45 : 0.7 }}
+        transition={{ duration: sec * 0.85, ease: 'easeIn' }}
+        style={{
+          position:      'fixed',
+          inset:         0,
+          background:    'radial-gradient(ellipse at center, transparent 25%, rgba(0,0,0,0.85) 90%)',
+          pointerEvents: 'none',
+          zIndex:        0,
+        }}
+      />
+
+      {/* 뒤에서 솟아오르는 빛 기둥 */}
+      <motion.div
+        initial={{ opacity: 0, scaleY: 0 }}
+        animate={{ opacity: [0, 0.85, 0.6], scaleY: [0, 1, 1] }}
+        transition={{ duration: 0.6, ease: 'easeOut', times: [0, 0.55, 1] }}
+        style={{
+          position:        'absolute',
+          left:            '50%',
+          bottom:          '50%',
+          width:           160,
+          height:          900,
+          marginLeft:      -80,
+          transform:       'rotateX(72deg)',
+          transformOrigin: 'bottom center',
+          background:      `linear-gradient(to top, ${cfg.glowColor}ee 0%, ${cfg.glowColor}55 35%, transparent 100%)`,
+          filter:          'blur(8px)',
+          mixBlendMode:    'screen',
+          pointerEvents:   'none',
+          zIndex:          0,
+        }}
+      />
 
       {/* 중앙에서 방사되는 빛 폭발 */}
       <motion.div
@@ -386,26 +460,23 @@ function BuildupStageView({
         ))}
       </div>
 
-      {/* 알 + 등급별 글로우 */}
+      {/* 알 + 심장박동 리듬 (정적-쿵-쉬-쿵쿵-쉬-쿵) */}
       <motion.div
         animate={{
-          scale:  isUpgrade ? [1, 1.12, 0.96, 1.06, 1] : [1, 1.04, 1, 1.04, 1],
-          x:      xArr,
-          rotate: rArr,
+          scale:  beatScale,
+          rotate: beatRotate,
+          y:      beatY,
         }}
         transition={{
-          scale: {
-            duration: (cfg.duration / 1000) * 0.55,
-            ease:     'easeInOut',
-            times:    [0, 0.2, 0.5, 0.75, 1],
-          },
-          x:      { duration: vibDurSec, delay: vibDelaySec, ease: 'easeInOut' },
-          rotate: { duration: vibDurSec, delay: vibDelaySec, ease: 'easeInOut' },
+          duration: sec,
+          times:    beatTimes,
+          ease:     'easeInOut',
         }}
         style={{
-          filter:   `drop-shadow(0 0 ${isUpgrade ? 44 : 26}px ${cfg.glowColor}cc) drop-shadow(0 0 ${isUpgrade ? 88 : 52}px ${cfg.glowColor}55)`,
-          position: 'relative',
-          zIndex:   1,
+          filter:        `drop-shadow(0 0 ${isUpgrade ? 44 : 26}px ${cfg.glowColor}cc) drop-shadow(0 0 ${isUpgrade ? 88 : 52}px ${cfg.glowColor}55)`,
+          position:      'relative',
+          transformStyle:'preserve-3d',
+          zIndex:        1,
         }}
       >
         <EggSvg design={egg} size={148} />
@@ -426,40 +497,43 @@ function BuildupStageView({
 
       {/* 등급 뱃지 */}
       <motion.div
-        initial={{ scale: 0, opacity: 0, y: isUpgrade ? 28 : 12 }}
-        animate={{ scale: 1, opacity: 1, y: 0 }}
+        initial={{ scale: 0.7, opacity: 0, y: isUpgrade ? 60 : 12, filter: 'blur(8px)' }}
+        animate={{ scale: 1, opacity: 1, y: 0, filter: 'blur(0px)' }}
         transition={{
           type:      'spring',
-          stiffness: isUpgrade ? 700 : 380,
-          damping:   isUpgrade ? 14  : 22,
-          delay:     0.12,
+          stiffness: isUpgrade ? 320 : 380,
+          damping:   isUpgrade ? 22  : 22,
+          mass:      0.8,
+          delay:     0.25,
         }}
         style={{ position: 'relative', zIndex: 1 }}
       >
         <motion.div
           animate={{
-            scale:     [1, 1.07, 1],
+            scale:     [1, 1.04, 1, 1.06, 1],
             boxShadow: [
-              `0 4px 18px ${cfg.glowColor}44`,
-              `0 8px 40px ${cfg.glowColor}99`,
-              `0 4px 18px ${cfg.glowColor}44`,
+              `0 4px 30px ${cfg.glowColor}55`,
+              `0 6px 50px ${cfg.glowColor}99`,
+              `0 4px 30px ${cfg.glowColor}55`,
+              `0 8px 60px ${cfg.glowColor}cc`,
+              `0 4px 30px ${cfg.glowColor}55`,
             ],
           }}
-          transition={{ duration: 1.3, repeat: Infinity, ease: 'easeInOut' }}
+          transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
           style={{
-            padding:      '8px 28px',
+            padding:      '12px 40px',
             borderRadius: '999px',
             background:   cfg.badgeGradient,
-            border:       `2px solid ${cfg.glowColor}88`,
+            border:       `2px solid ${cfg.glowColor}`,
           }}
         >
           <span
             style={{
-              fontSize:      tier === 'legendary' ? '11px' : '13px',
+              fontSize:      tier === 'legendary' ? '15px' : '17px',
               fontWeight:    900,
-              letterSpacing: '2.5px',
+              letterSpacing: tier === 'legendary' ? '3px' : '4px',
               color:         '#fff',
-              textShadow:    `0 0 16px ${cfg.glowColor}`,
+              textShadow:    `0 0 20px ${cfg.glowColor}, 0 2px 4px rgba(0,0,0,0.4)`,
               whiteSpace:    'nowrap',
             }}
           >
@@ -504,6 +578,276 @@ function BackgroundStars() {
         />
       ))}
     </div>
+  )
+}
+
+// ─── Cracking 4막 구조 ──────────────────────────────────────────────────────
+//
+// act 0 — 안쪽으로 움츠러들며 에너지를 모음 (미세한 떨림)
+// act 1 — 첫 균열, 날카로운 잭트
+// act 2 — 더 격렬한 흔들림, 금이 넓어지고 색수차 효과
+// act 3 — 모든 흔들림이 멎고 알만 빛나며 정지 — *터지기 직전의 침묵*
+// act 4 — 시간 정지 링 → 백색 섬광 → 충격파
+
+// 점진적으로 그려지는 균열 SVG (pathLength 애니메이션)
+function CrackPaths({ progress, size = 148 }: { progress: number; size?: number }) {
+  const h = size * 1.22
+  const paths = [
+    'M50 22 L42 40 L52 52 L38 74 L48 88 L40 108',
+    'M58 18 L66 38 L58 52 L70 68 L62 86',
+    'M38 32 L30 54 L44 62 L34 82',
+    'M50 24 L60 48 L46 64 L58 82',
+  ]
+  return (
+    <svg
+      width={size}
+      height={h}
+      viewBox="0 0 100 122"
+      style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'visible' }}
+    >
+      {paths.map((d, i) => (
+        <motion.path
+          key={i}
+          d={d}
+          stroke="#fff"
+          fill="none"
+          strokeWidth={1 + i * 0.3}
+          strokeLinecap="round"
+          style={{ filter: 'drop-shadow(0 0 6px #fff) drop-shadow(0 0 12px #fde68a)' }}
+          initial={{ pathLength: 0, opacity: 0 }}
+          animate={{ pathLength: progress, opacity: progress > 0 ? 1 : 0 }}
+          transition={{ duration: 0.4, delay: i * 0.1 }}
+        />
+      ))}
+    </svg>
+  )
+}
+
+// 충격파 링 — 폭발 시점에 외곽으로 퍼지는 동심원
+function ShockwaveRings({ color, count = 3 }: { color: string; count?: number }) {
+  return (
+    <>
+      {Array.from({ length: count }).map((_, i) => (
+        <motion.div
+          key={i}
+          initial={{ scale: 0.3, opacity: 0.9 }}
+          animate={{ scale: 3 + i * 0.7, opacity: 0 }}
+          transition={{ duration: 1 + i * 0.25, delay: i * 0.12, ease: 'easeOut' }}
+          style={{
+            position:     'absolute',
+            left:         '50%',
+            top:          '50%',
+            width:        240,
+            height:       240,
+            marginLeft:   -120,
+            marginTop:    -120,
+            border:       `3px solid ${color}`,
+            borderRadius: '50%',
+            boxShadow:    `0 0 40px ${color}, inset 0 0 20px ${color}77`,
+            pointerEvents: 'none',
+          }}
+        />
+      ))}
+    </>
+  )
+}
+
+interface CrackingStageViewProps {
+  egg:       typeof EGG_DESIGNS[0]
+  glowColor: string
+  accent:    string
+  onDone:    () => void
+}
+
+function CrackingStageView({ egg, glowColor, accent, onDone }: CrackingStageViewProps) {
+  const [act, setAct] = useState(0)
+
+  useEffect(() => {
+    const timers: ReturnType<typeof setTimeout>[] = []
+    // 0 → 1: 준비(긴장 응축, 작은 떨림) — 길게 끌어 두려움 누적
+    timers.push(setTimeout(() => setAct(1),  650))
+    // 1 → 2: 첫 균열 후 두번째 잭트, 셰이크 강화
+    timers.push(setTimeout(() => setAct(2), 1250))
+    // 2 → 3: 정적 — 모든 것이 얼어붙는 그 한 박자
+    timers.push(setTimeout(() => setAct(3), 1900))
+    // 3 → 4: 폭발
+    timers.push(setTimeout(() => setAct(4), 2200))
+    // 종료
+    timers.push(setTimeout(onDone,           2750))
+    return () => timers.forEach(clearTimeout)
+  }, [onDone])
+
+  // 균열 진행도 — act 단위로 단계적으로 그어짐
+  const crackProgress = act >= 4 ? 1 : act >= 2 ? 0.85 : act >= 1 ? 0.45 : 0
+
+  // 카메라 셰이크 — act 3 (정적)에서는 완전 정지
+  const cameraShake =
+    act === 0 ? 'wp-shake-sm 0.55s ease-in-out infinite' :
+    act === 1 ? 'wp-shake-md 0.32s ease-in-out infinite' :
+    act === 2 ? 'wp-shake-lg 0.18s ease-in-out infinite' :
+    'none'
+
+  // 알의 phase별 모션
+  const eggAnimate =
+    act === 0 ? {
+      scale:   [1, 0.93, 0.92, 0.95],
+      rotate:  [0, -4, 5, -2],
+      y:       [0, 4, 2, 0],
+    } :
+    act === 1 ? {
+      scale:   [0.95, 1.18, 1.05, 1.10],
+      rotate:  [0, 14, -10, 6],
+      x:       [0, -12, 8, 0],
+    } :
+    act === 2 ? {
+      scale:   [1.10, 1.22, 1.12, 1.25],
+      rotate:  [0, -16, 18, -12],
+      x:       [0, 14, -16, 10],
+      y:       [0, -3, 4, -2],
+    } :
+    act === 3 ? {
+      // 정적 — 살짝 부풀어 죽은 듯 멈춤
+      scale:   1.32,
+      rotate:  0,
+      x:       0,
+      y:       0,
+    } : {
+      // 폭발 — 알이 펑 튀고 사라짐
+      scale:   [1.32, 1.45, 0.05],
+      opacity: [1, 1, 0],
+    }
+
+  const eggTransition =
+    act === 0 ? { duration: 0.65, ease: [0.45, 0.05, 0.55, 0.95] as [number,number,number,number] } :
+    act === 1 ? { duration: 0.6,  ease: [0.16, 0.78, 0.32, 1]   as [number,number,number,number] } :
+    act === 2 ? { duration: 0.65, ease: [0.45, 0.05, 0.55, 0.95] as [number,number,number,number] } :
+    act === 3 ? { duration: 0.3,  ease: [0.16, 0.78, 0.32, 1]   as [number,number,number,number] } :
+                { duration: 0.45, ease: [0.16, 0.84, 0.44, 1]   as [number,number,number,number], times: [0, 0.18, 1] }
+
+  return (
+    <motion.div
+      initial={{ opacity: 1 }}
+      exit={{ opacity: 0, transition: { duration: 0.22, ease: 'easeOut' } }}
+      style={{
+        position:       'absolute',
+        inset:          0,
+        display:        'flex',
+        alignItems:     'center',
+        justifyContent: 'center',
+        zIndex:         1,
+        animation:      cameraShake,
+        perspective:    900,
+      }}
+    >
+      {/* 비네트 — 정적 순간에 가장 깊게 닫힘 */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: act >= 3 ? 0.88 : act >= 1 ? 0.6 : 0.35 }}
+        transition={{ duration: 0.4, ease: 'easeOut' }}
+        style={{
+          position:      'absolute',
+          inset:         0,
+          background:    'radial-gradient(ellipse at center, transparent 18%, #000 78%)',
+          pointerEvents: 'none',
+        }}
+      />
+
+      {/* 시간 정지 링 — act 3 (정적) 순간에 한 번 번쩍임 */}
+      {act === 3 && (
+        <motion.div
+          initial={{ scale: 0.4, opacity: 0 }}
+          animate={{ scale: [0.4, 1.4, 1.6], opacity: [0, 0.9, 0] }}
+          transition={{ duration: 0.3, ease: 'easeOut' }}
+          style={{
+            position:     'absolute',
+            left:         '50%',
+            top:          '50%',
+            width:        340,
+            height:       340,
+            marginLeft:   -170,
+            marginTop:    -170,
+            border:       `2px solid ${glowColor}`,
+            borderRadius: '50%',
+            boxShadow:    `0 0 60px ${glowColor}, inset 0 0 30px ${glowColor}55`,
+            pointerEvents: 'none',
+          }}
+        />
+      )}
+
+      {/* 폭발광 — act 4에서만 트리거 */}
+      {act >= 4 && (
+        <>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.3 }}
+            animate={{ opacity: [0, 1, 0], scale: [0.3, 6, 14] }}
+            transition={{ duration: 0.55, ease: [0.16, 0.78, 0.32, 1] }}
+            style={{
+              position:     'absolute',
+              left:         '50%',
+              top:          '50%',
+              width:        240,
+              height:       240,
+              marginLeft:   -120,
+              marginTop:    -120,
+              borderRadius: '50%',
+              pointerEvents: 'none',
+              background:   `radial-gradient(circle at center, #fff 0%, ${glowColor} 25%, ${accent}aa 55%, transparent 80%)`,
+              mixBlendMode: 'screen',
+              filter:       'blur(2px)',
+            }}
+          />
+          {/* 백색 섬광 */}
+          <motion.div
+            initial={{ opacity: 1 }}
+            animate={{ opacity: 0 }}
+            transition={{ duration: 0.5, ease: 'easeOut' }}
+            style={{
+              position:     'absolute',
+              inset:        0,
+              background:   '#fff',
+              mixBlendMode: 'screen',
+              pointerEvents: 'none',
+            }}
+          />
+          <div style={{ position: 'absolute', left: '50%', top: '50%' }}>
+            <ShockwaveRings color={glowColor} count={3} />
+          </div>
+        </>
+      )}
+
+      {/* 알 — act에 따른 3 종류 모션 */}
+      <motion.div
+        animate={eggAnimate}
+        transition={eggTransition}
+        style={{
+          position:        'relative',
+          transformStyle:  'preserve-3d',
+          filter:          `drop-shadow(0 0 ${40 + act * 20}px ${glowColor})`,
+          animation:       act >= 1 && act <= 2 ? 'wp-chroma-shake 0.18s infinite' : 'none',
+        }}
+      >
+        <EggSvg design={egg} size={148} />
+        <CrackPaths progress={crackProgress} size={148} />
+
+        {/* 균열에서 새어나오는 내부 빛 — 폭발까지 점점 커짐 */}
+        <motion.div
+          animate={{
+            opacity: act === 0 ? 0.2 : act === 1 ? 0.45 : act === 2 ? 0.7 : act === 3 ? 0.95 : 0,
+            scale:   act === 0 ? 0.6 : act === 1 ? 0.85 : act === 2 ? 1.1 : act === 3 ? 1.3 : 2,
+          }}
+          transition={{ duration: act === 3 ? 0.25 : 0.5, ease: 'easeOut' }}
+          style={{
+            position:     'absolute',
+            inset:        0,
+            borderRadius: '50%',
+            pointerEvents: 'none',
+            background:   `radial-gradient(circle at center, #fff 0%, ${glowColor} 35%, ${accent}88 65%, transparent 85%)`,
+            mixBlendMode: 'screen',
+            filter:       'blur(6px)',
+          }}
+        />
+      </motion.div>
+    </motion.div>
   )
 }
 
@@ -835,10 +1179,11 @@ export default function MondayGacha({ onClose, onPetSelected }: MondayGachaProps
     return () => clearTimeout(t)
   }, [phase, buildupIndex, buildupTiers])
 
-  // cracking → revealed: 흔들림(2.3s) + 여유(0.15s) 후 결과 공개
+  // cracking 단계의 페이즈 전환은 CrackingStageView가 onDone으로 트리거.
+  // (예외 안전망: 컴포넌트가 마운트 안 된 경우 대비 백업 타이머)
   useEffect(() => {
     if (phase !== 'cracking') return
-    const t = setTimeout(() => setPhase('revealed'), 2450)
+    const t = setTimeout(() => setPhase('revealed'), 3000)
     return () => clearTimeout(t)
   }, [phase])
 
@@ -897,6 +1242,9 @@ export default function MondayGacha({ onClose, onPetSelected }: MondayGachaProps
         WebkitUserSelect: 'none',
       }}
     >
+      {/* Shadow DOM 안에서만 유효한 셰이크/색수차 keyframes */}
+      <style>{SHAKE_CSS}</style>
+
       {/* 배경 그라데이션 — 소환 시 페이드아웃 */}
       <motion.div
         animate={{ opacity: isSummoning ? 0 : 1 }}
@@ -1038,56 +1386,16 @@ export default function MondayGacha({ onClose, onPetSelected }: MondayGachaProps
         )}
       </AnimatePresence>
 
-      {/* ── 선택 후 흔들림 (cracking) ── */}
+      {/* ── 선택 후 흔들림 (cracking) — 4막 구조 ── */}
       <AnimatePresence>
-        {phase === 'cracking' && selectedIndex !== null && selectedEgg && (
-          <motion.div
-            key="cracking-egg"
-            initial={{ scale: 1, opacity: 1 }}
-            animate={{
-              // 0→scale up, 이후 격렬한 좌우 흔들림, 마지막에 scale 0으로 폭발
-              scale:   [1, 1.06, 1.55, 1.55, 1.55, 1.55, 1.55, 1.55, 1.55, 1.55, 0],
-              x:       [0,    0,    0,  -22,  24,  -20,  22,  -16,  16,   -9,   0],
-              rotate:  [0,    0,    0,   -9,  10,  -12,  12,   -8,   8,   -4,   0],
-              opacity: [1,    1,    1,    1,   1,    1,   1,    1,   1,    1,   0],
-            }}
-            transition={{
-              duration: 2.3,
-              times: [0, 0.08, 0.2, 0.28, 0.37, 0.46, 0.55, 0.64, 0.73, 0.82, 1],
-              ease: 'easeInOut',
-            }}
-            exit={{ opacity: 0, scale: 0, transition: { duration: 0.12 } }}
-            style={{
-              position: 'relative',
-              zIndex:   1,
-              filter:   `drop-shadow(0 0 48px ${selectedEgg.glow}cc) drop-shadow(0 0 96px ${selectedEgg.glow}55)`,
-            }}
-          >
-            <div style={{ position: 'relative' }}>
-              <EggSvg design={selectedEgg} size={148} />
-              {/* 균열 오버레이: 흔들림 후반부에 페이드인 */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: [0, 0, 0, 0, 0, 0.4, 0.75, 1, 1, 0] }}
-                transition={{ duration: 2.3, times: [0, 0.08, 0.2, 0.28, 0.37, 0.46, 0.55, 0.64, 0.73, 1] }}
-              >
-                <CrackOverlay size={148} />
-              </motion.div>
-              {/* 내부 빛 폭발 */}
-              <motion.div
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: [0, 0, 0, 0, 0, 0, 1.5, 2.5, 3], opacity: [0, 0, 0, 0, 0, 0, 0.6, 0.8, 0] }}
-                transition={{ duration: 2.3, times: [0, 0.08, 0.2, 0.28, 0.37, 0.46, 0.55, 0.73, 1] }}
-                style={{
-                  position:     'absolute',
-                  inset:        0,
-                  borderRadius: '50%',
-                  background:   `radial-gradient(ellipse at center, #fff 0%, ${selectedEgg.glow} 40%, transparent 70%)`,
-                  pointerEvents: 'none',
-                }}
-              />
-            </div>
-          </motion.div>
+        {phase === 'cracking' && selectedEgg && result && (
+          <CrackingStageView
+            key="cracking"
+            egg={selectedEgg}
+            glowColor={result.glowColor}
+            accent={result.particleColors[0] ?? result.glowColor}
+            onDone={() => setPhase('revealed')}
+          />
         )}
       </AnimatePresence>
 
