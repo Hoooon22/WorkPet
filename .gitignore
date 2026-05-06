@@ -6,6 +6,10 @@ functions/node_modules/
 dist/
 work-pet-orbit-*.zip
 
+# Tauri
+src-tauri/target/
+src-tauri/gen/schemas/
+
 # TypeScript build info
 *.tsbuildinfo
 

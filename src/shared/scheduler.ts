@@ -1,0 +1,68 @@
+import { emit } from '@tauri-apps/api/event'
+import {
+  fetchBriefingData,
+  fetchFullBriefing,
+  handleNewEmailViaHistory,
+  checkForNewCalendarEvents,
+  notifyForAlerts,
+  storeCurrentHistoryId,
+} from './briefing'
+import { isSignedIn } from './auth'
+import { setValue, KEYS } from './storage'
+import type { BriefingPayload } from './types'
+
+const ALARM_PERIOD_MS = 60_000
+
+let started = false
+
+async function persistAndEmit(payload: BriefingPayload): Promise<void> {
+  await setValue(KEYS.PET_BRIEFING, payload)
+  await setValue(KEYS.PET_DISMISSED, false)
+  await setValue(KEYS.PET_STATE, 'alert')
+  await emit('orbit:briefing-alert', payload)
+}
+
+async function tick(): Promise<void> {
+  try {
+    const emailPayload = await handleNewEmailViaHistory()
+    if (emailPayload) await persistAndEmit(emailPayload)
+
+    const newCalPayload = await checkForNewCalendarEvents()
+    if (newCalPayload) await persistAndEmit(newCalPayload)
+
+    const polled = await fetchBriefingData()
+    if (polled) {
+      await notifyForAlerts(polled.payload)
+      await persistAndEmit(polled.payload)
+    }
+  } catch (err) {
+    console.warn('[orbit] scheduler tick failed', err)
+  }
+}
+
+export function startBriefingScheduler(): void {
+  if (started) return
+  started = true
+  ;(async () => {
+    if (await isSignedIn()) {
+      void storeCurrentHistoryId().catch(() => {})
+    }
+    setTimeout(() => {
+      void tick()
+      setInterval(() => void tick(), ALARM_PERIOD_MS)
+    }, 5_000)
+  })()
+}
+
+export async function fetchNow(): Promise<void> {
+  const polled = await fetchBriefingData()
+  if (polled) {
+    await notifyForAlerts(polled.payload)
+    await persistAndEmit(polled.payload)
+  } else {
+    const full = await fetchFullBriefing()
+    if (full) await persistAndEmit(full)
+  }
+}
+
+export { fetchFullBriefing }

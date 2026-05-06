@@ -1,16 +1,37 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import { crx } from '@crxjs/vite-plugin'
-import manifest from './manifest.json'
+import { resolve } from 'path'
+
+const host = process.env.TAURI_DEV_HOST
 
 export default defineConfig({
-  plugins: [
-    react(),
-    crx({ manifest }),
-  ],
-  // Content script 스타일 처리를 위해 CSS injection 활성화
+  plugins: [react()],
+
+  clearScreen: false,
+  server: {
+    port: 1420,
+    strictPort: true,
+    host: host || false,
+    hmr: host ? { protocol: 'ws', host, port: 1421 } : undefined,
+    watch: {
+      ignored: ['**/src-tauri/**'],
+    },
+  },
+
+  envPrefix: ['VITE_', 'TAURI_ENV_*'],
+
   build: {
-    target: 'esnext',
-    minify: false, // 디버깅 편의를 위해 hackathon 단계에서는 off
+    target:
+      process.env.TAURI_ENV_PLATFORM === 'windows' ? 'chrome105' : 'safari13',
+    minify: !process.env.TAURI_ENV_DEBUG ? 'esbuild' : false,
+    sourcemap: !!process.env.TAURI_ENV_DEBUG,
+    rollupOptions: {
+      input: {
+        main: resolve(__dirname, 'index.html'),
+        panel: resolve(__dirname, 'panel.html'),
+        gacha: resolve(__dirname, 'gacha.html'),
+        screenshot: resolve(__dirname, 'screenshot.html'),
+      },
+    },
   },
 })

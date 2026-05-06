@@ -1,0 +1,43 @@
+[package]
+name = "work-pet-orbit"
+version = "0.2.0"
+description = "Work-Pet: Orbit Desktop"
+authors = ["WorkPet"]
+edition = "2021"
+rust-version = "1.77.2"
+
+[lib]
+name = "work_pet_orbit_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["macos-private-api", "tray-icon", "image-png"] }
+tauri-plugin-store = "2"
+tauri-plugin-shell = "2"
+tauri-plugin-notification = "2"
+tauri-plugin-clipboard-manager = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tiny_http = "0.12"
+url = "2"
+urlencoding = "2"
+base64 = "0.22"
+sha2 = "0.10"
+rand = "0.8"
+ureq = { version = "2", features = ["tls"] }
+serde_urlencoded = "0.7"
+screenshots = "0.8"
+image = { version = "0.25", default-features = false, features = ["png"] }
+
+[profile.dev]
+incremental = true
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = true
