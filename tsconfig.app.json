@@ -15,7 +15,7 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
-    "types": ["chrome", "vite/client"]
+    "types": ["vite/client"]
   },
-  "include": ["src"]
+  "include": ["src/desktop", "src/shared", "src/assets"]
 }
