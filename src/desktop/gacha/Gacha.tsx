@@ -173,7 +173,7 @@ export default function Gacha() {
               🎰 이번 주 파트너 뽑기!
             </h1>
             <p style={{ fontSize: 16, color: '#cbd5e1', marginBottom: 32 }}>
-              4종 펫 중 한 마리가 당신의 파트너가 돼요.
+              9종 펫 중 한 마리가 당신의 파트너가 돼요.
             </p>
             <motion.button
               whileHover={{ scale: 1.05 }}
