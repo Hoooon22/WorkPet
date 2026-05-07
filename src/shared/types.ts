@@ -43,7 +43,16 @@ export interface GeminiResponse {
 
 export type PetState = 'idle' | 'alert' | 'dismissed'
 
-export type LottiePetId = 'cat' | 'rabbit' | 'hedgehog' | 'raccoon' | 'unicorn'
+export type LottiePetId =
+  | 'cat'
+  | 'rabbit'
+  | 'hedgehog'
+  | 'raccoon'
+  | 'unicorn'
+  | 'dog'
+  | 'panda'
+  | 'lion'
+  | 'dragon'
 export type SvgPetId =
   | 'fox'
   | 'frog'

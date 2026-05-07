@@ -17,6 +17,10 @@ export const LOTTIE_PET_IDS: LottiePetId[] = [
   'hedgehog',
   'raccoon',
   'unicorn',
+  'dog',
+  'panda',
+  'lion',
+  'dragon',
 ]
 
 export const ALL_PET_IDS: PetId[] = [...SVG_PET_IDS, ...LOTTIE_PET_IDS]

@@ -13,9 +13,13 @@ type Phase = 'intro' | 'rolling' | 'revealed'
 
 const ROSTER: { petId: PetId; name: string; grade: Grade }[] = [
   { petId: 'rabbit', name: '토끼', grade: 'COMMON' },
+  { petId: 'dog', name: '강아지', grade: 'COMMON' },
   { petId: 'hedgehog', name: '고슴도치', grade: 'RARE' },
+  { petId: 'panda', name: '판다', grade: 'RARE' },
   { petId: 'raccoon', name: '너구리', grade: 'EPIC' },
+  { petId: 'lion', name: '사자', grade: 'EPIC' },
   { petId: 'unicorn', name: '유니콘', grade: 'LEGENDARY' },
+  { petId: 'dragon', name: '드래곤', grade: 'LEGENDARY' },
 ]
 
 const GRADE_WEIGHTS: Record<Grade, number> = {

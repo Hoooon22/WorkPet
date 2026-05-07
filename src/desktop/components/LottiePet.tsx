@@ -8,6 +8,10 @@ import rabbitLottie from '../../assets/lottie/pets/rabbit.json'
 import hedgehogLottie from '../../assets/lottie/pets/hedgehog.json'
 import raccoonLottie from '../../assets/lottie/pets/raccoon.json'
 import unicornLottie from '../../assets/lottie/pets/unicorn.json'
+import dogLottie from '../../assets/lottie/pets/dog.json'
+import pandaLottie from '../../assets/lottie/pets/panda.json'
+import lionLottie from '../../assets/lottie/pets/lion.json'
+import dragonLottie from '../../assets/lottie/pets/dragon.json'
 
 const LOTTIE_MAP: Record<LottiePetId, object> = {
   cat: catLottie,
@@ -15,9 +19,23 @@ const LOTTIE_MAP: Record<LottiePetId, object> = {
   hedgehog: hedgehogLottie,
   raccoon: raccoonLottie,
   unicorn: unicornLottie,
+  dog: dogLottie,
+  panda: pandaLottie,
+  lion: lionLottie,
+  dragon: dragonLottie,
 }
 
-export const LOTTIE_PET_IDS: LottiePetId[] = ['cat', 'rabbit', 'hedgehog', 'raccoon', 'unicorn']
+export const LOTTIE_PET_IDS: LottiePetId[] = [
+  'cat',
+  'rabbit',
+  'hedgehog',
+  'raccoon',
+  'unicorn',
+  'dog',
+  'panda',
+  'lion',
+  'dragon',
+]
 
 export function isLottiePetId(s: unknown): s is LottiePetId {
   return typeof s === 'string' && (LOTTIE_PET_IDS as readonly string[]).includes(s)
