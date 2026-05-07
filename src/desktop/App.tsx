@@ -182,6 +182,7 @@ export default function App() {
 
   const wanderActionRef = useRef<WanderPhase>('idle')
   const wanderPausedRef = useRef(false)
+  const panelOpenRef = useRef(false)
   const petStateRef = useRef<PetState>('idle')
   const petKindRef = useRef<PetId>('fox')
   const currentLottieFrameRef = useRef(0)
@@ -207,6 +208,9 @@ export default function App() {
     wanderPausedRef.current = wanderPaused
     void invoke('set_wander_paused_state', { paused: wanderPaused }).catch(() => {})
   }, [wanderPaused])
+  useEffect(() => {
+    panelOpenRef.current = panelOpen
+  }, [panelOpen])
   useEffect(() => {
     petStateRef.current = petState
     void invoke('set_dismissed_state', { dismissed: petState === 'dismissed' }).catch(() => {})
@@ -553,7 +557,7 @@ export default function App() {
       if (cancelled || inFlight) return
       const bounds = boundsRef.current
       if (!bounds) return
-      if (wanderPausedRef.current || petState === 'dismissed' || !signedIn) {
+      if (wanderPausedRef.current || panelOpenRef.current || petState === 'dismissed' || !signedIn) {
         if (phase === 'walk') enterIdle(Date.now())
         return
       }

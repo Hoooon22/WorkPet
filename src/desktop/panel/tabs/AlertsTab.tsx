@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import { open as openExternal } from '@tauri-apps/plugin-shell'
 import type { BriefingPayload } from '../../../shared/types'
 
 interface Props {
@@ -55,7 +56,7 @@ export default function AlertsTab({ briefing, action }: Props) {
               bg="#eff6ff"
               titleColor="#1e40af"
               onClick={() => {
-                if (e.link) window.open(e.link, '_blank')
+                if (e.link) openExternal(e.link)
                 action('event-read', e.id)
               }}
               onClose={() => action('event-read', e.id)}
@@ -95,7 +96,7 @@ export default function AlertsTab({ briefing, action }: Props) {
               bg={e.isMondayEmail ? '#fef9ee' : '#f0fdf4'}
               titleColor={e.isMondayEmail ? '#92400e' : '#166534'}
               onClick={() => {
-                if (e.link) window.open(e.link, '_blank')
+                if (e.link) openExternal(e.link)
                 action('email-read', e.id)
               }}
               onClose={() => action('email-read', e.id)}

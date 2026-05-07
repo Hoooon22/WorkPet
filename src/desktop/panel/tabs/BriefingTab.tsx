@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import { open as openExternal } from '@tauri-apps/plugin-shell'
 import type { BriefingPayload } from '../../../shared/types'
 
 interface Props {
@@ -97,7 +98,7 @@ export default function BriefingTab({ full, loading, onFetch }: Props) {
                   <motion.div
                     key={evt.id}
                     whileHover={{ scale: evt.link ? 1.01 : 1 }}
-                    onClick={() => evt.link && window.open(evt.link, '_blank')}
+                    onClick={() => evt.link && openExternal(evt.link)}
                     style={{
                       display: 'flex',
                       gap: 10,
@@ -144,7 +145,7 @@ export default function BriefingTab({ full, loading, onFetch }: Props) {
                 <motion.div
                   key={email.id}
                   whileHover={{ scale: email.link ? 1.01 : 1 }}
-                  onClick={() => email.link && window.open(email.link, '_blank')}
+                  onClick={() => email.link && openExternal(email.link)}
                   style={{
                     padding: 9,
                     borderRadius: 9,
