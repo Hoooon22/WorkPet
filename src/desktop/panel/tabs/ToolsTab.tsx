@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import type { FocusTimerState } from '../../../shared/types'
 import FocusTimerPanel from '../panels/FocusTimerPanel'
 import TranslatePanel from '../panels/TranslatePanel'
@@ -7,6 +8,7 @@ import GeminiAskPanel from '../panels/GeminiAskPanel'
 import QuickMemoPanel from '../panels/QuickMemoPanel'
 import ColorPickerPanel from '../panels/ColorPickerPanel'
 import WordCountPanel from '../panels/WordCountPanel'
+import ScreenshotPanel from '../panels/ScreenshotPanel'
 
 interface Props {
   focusTimer: FocusTimerState
@@ -23,73 +25,207 @@ type ToolId =
   | 'wordcount'
   | 'screenshot'
 
-const TOOLS: { id: ToolId; label: string; emoji: string }[] = [
-  { id: 'focus', label: '집중 타이머', emoji: '⏱️' },
-  { id: 'translate', label: '번역', emoji: '🌐' },
-  { id: 'summarize', label: '요약', emoji: '📝' },
-  { id: 'ask', label: '질문', emoji: '🤔' },
-  { id: 'memo', label: '빠른 메모', emoji: '📋' },
-  { id: 'color', label: '색상 추출', emoji: '🎨' },
-  { id: 'wordcount', label: '글자수', emoji: '🔢' },
-  { id: 'screenshot', label: '영역 캡처', emoji: '📸' },
+interface ToolMeta {
+  id: ToolId
+  label: string
+  emoji: string
+  bg: string
+  border: string
+  fg: string
+}
+
+const TOOLS: ToolMeta[] = [
+  { id: 'focus',      label: '집중 타이머', emoji: '⏱️', bg: '#fef2f2', border: '#fecaca', fg: '#dc2626' },
+  { id: 'translate',  label: '번역',       emoji: '🌐', bg: '#eff6ff', border: '#bfdbfe', fg: '#1d4ed8' },
+  { id: 'summarize',  label: '요약',       emoji: '📝', bg: '#fffbeb', border: '#fde68a', fg: '#d97706' },
+  { id: 'ask',        label: '질문',       emoji: '🤔', bg: '#f5f3ff', border: '#ddd6fe', fg: '#7c3aed' },
+  { id: 'memo',       label: '빠른 메모',   emoji: '📋', bg: '#f0fdf4', border: '#bbf7d0', fg: '#16a34a' },
+  { id: 'color',      label: '색상 추출',   emoji: '🎨', bg: '#fdf2f8', border: '#fbcfe8', fg: '#db2777' },
+  { id: 'wordcount',  label: '글자수',     emoji: '🔢', bg: '#f3f4f6', border: '#d1d5db', fg: '#4b5563' },
+  { id: 'screenshot', label: '영역 캡처',   emoji: '📸', bg: '#ecfeff', border: '#a5f3fc', fg: '#0891b2' },
 ]
 
 export default function ToolsTab({ focusTimer, action }: Props) {
   const [active, setActive] = useState<ToolId | null>(null)
+  const [hovered, setHovered] = useState<ToolId | null>(null)
+  const activeTool = active ? TOOLS.find((t) => t.id === active) ?? null : null
+
+  const handleSelect = (t: ToolMeta) => {
+    setActive(active === t.id ? null : t.id)
+  }
 
   return (
     <div style={{ padding: 14 }}>
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: 8,
-          marginBottom: 12,
-        }}
-      >
-        {TOOLS.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => {
-              if (t.id === 'screenshot') {
-                action('open-screenshot')
-                return
-              }
-              setActive(active === t.id ? null : t.id)
-            }}
+      {!activeTool && (
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: 8,
+          }}
+        >
+          {TOOLS.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => handleSelect(t)}
+              style={{
+                all: 'unset',
+                cursor: 'pointer',
+                padding: '10px 8px',
+                borderRadius: 8,
+                background: '#f9fafb',
+                border: '1px solid #e5e7eb',
+                textAlign: 'center',
+                fontSize: 12,
+                fontWeight: 600,
+                color: '#374151',
+              }}
+            >
+              <span style={{ fontSize: 18, display: 'block', marginBottom: 2 }}>{t.emoji}</span>
+              {t.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {activeTool && (
+        <div
+          style={{
+            display: 'flex',
+            gap: 6,
+            marginBottom: 10,
+            paddingBottom: 2,
+          }}
+        >
+          {TOOLS.map((t) => {
+            const isActive = active === t.id
+            const isHovered = hovered === t.id
+            return (
+              <button
+                key={t.id}
+                onClick={() => handleSelect(t)}
+                onMouseEnter={() => setHovered(t.id)}
+                onMouseLeave={() => setHovered((h) => (h === t.id ? null : h))}
+                style={{
+                  all: 'unset',
+                  cursor: 'pointer',
+                  position: 'relative',
+                  width: 34,
+                  height: 34,
+                  flexShrink: 0,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 17,
+                  borderRadius: 8,
+                  background: isActive ? t.bg : '#f9fafb',
+                  border: `1px solid ${isActive ? t.fg : '#e5e7eb'}`,
+                  opacity: isActive ? 1 : 0.6,
+                  transition: 'opacity 0.15s, background 0.15s, border-color 0.15s',
+                }}
+              >
+                {t.emoji}
+                {isHovered && (
+                  <span
+                    style={{
+                      position: 'absolute',
+                      top: 'calc(100% + 4px)',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      background: '#1f2937',
+                      color: '#fff',
+                      fontSize: 10,
+                      fontWeight: 600,
+                      padding: '3px 7px',
+                      borderRadius: 4,
+                      whiteSpace: 'nowrap',
+                      pointerEvents: 'none',
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
+                      zIndex: 20,
+                    }}
+                  >
+                    {t.label}
+                  </span>
+                )}
+              </button>
+            )
+          })}
+        </div>
+      )}
+
+      <AnimatePresence mode="wait">
+        {activeTool && (
+          <motion.section
+            key={activeTool.id}
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.18 }}
             style={{
-              all: 'unset',
-              cursor: 'pointer',
-              padding: '10px 8px',
-              borderRadius: 8,
-              background: active === t.id ? '#dbeafe' : '#f9fafb',
-              border: `1px solid ${active === t.id ? '#93c5fd' : '#e5e7eb'}`,
-              textAlign: 'center',
-              fontSize: 12,
-              fontWeight: 600,
-              color: active === t.id ? '#1d4ed8' : '#374151',
+              borderRadius: 12,
+              background: '#fff',
+              border: `1px solid ${activeTool.border}`,
+              boxShadow: '0 6px 18px rgba(15,23,42,0.08)',
+              overflow: 'hidden',
             }}
           >
-            <span style={{ fontSize: 18, display: 'block', marginBottom: 2 }}>{t.emoji}</span>
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {active === 'focus' && (
-        <FocusTimerPanel
-          timer={focusTimer}
-          onStart={(s) => action('timer-start', s)}
-          onTogglePause={() => action('timer-toggle-pause')}
-          onReset={() => action('timer-reset')}
-        />
-      )}
-      {active === 'translate' && <TranslatePanel />}
-      {active === 'summarize' && <SummarizePanel />}
-      {active === 'ask' && <GeminiAskPanel />}
-      {active === 'memo' && <QuickMemoPanel />}
-      {active === 'color' && <ColorPickerPanel />}
-      {active === 'wordcount' && <WordCountPanel />}
+            <header
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '8px 12px',
+                background: activeTool.bg,
+                borderBottom: `1px solid ${activeTool.border}`,
+                fontSize: 12,
+                fontWeight: 700,
+                color: activeTool.fg,
+              }}
+            >
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 14 }}>{activeTool.emoji}</span>
+                {activeTool.label}
+              </span>
+              <button
+                onClick={() => setActive(null)}
+                aria-label="닫기"
+                style={{
+                  all: 'unset',
+                  cursor: 'pointer',
+                  width: 20,
+                  height: 20,
+                  borderRadius: 6,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: activeTool.fg,
+                  fontSize: 13,
+                  lineHeight: 1,
+                }}
+              >
+                ✕
+              </button>
+            </header>
+            <div style={{ padding: 10 }}>
+              {active === 'focus' && (
+                <FocusTimerPanel
+                  timer={focusTimer}
+                  onStart={(s) => action('timer-start', s)}
+                  onTogglePause={() => action('timer-toggle-pause')}
+                  onReset={() => action('timer-reset')}
+                />
+              )}
+              {active === 'translate' && <TranslatePanel />}
+              {active === 'summarize' && <SummarizePanel />}
+              {active === 'ask' && <GeminiAskPanel />}
+              {active === 'memo' && <QuickMemoPanel />}
+              {active === 'color' && <ColorPickerPanel />}
+              {active === 'wordcount' && <WordCountPanel />}
+              {active === 'screenshot' && <ScreenshotPanel />}
+            </div>
+          </motion.section>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
