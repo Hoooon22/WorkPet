@@ -175,6 +175,7 @@ export default function App() {
   const [activePet, setActivePet] = useState<GachaResult | null>(null)
   const [signedIn, setSignedIn] = useState(false)
   const [bubbleMessage, setBubbleMessage] = useState<string | null>(null)
+  const [stickyBubble, setStickyBubble] = useState<string | null>(null)
   const [focusTimer, setFocusTimer] = useState<FocusTimerState>(IDLE_FOCUS_TIMER)
   const [isSleepy, setIsSleepy] = useState(false)
   const [panelOpen, setPanelOpen] = useState(false)
@@ -463,7 +464,7 @@ export default function App() {
           'orbit:reminder-fire',
           (e) => {
             if (cancelled) return
-            showBubble(e.payload.message, 6000)
+            setStickyBubble(e.payload.message)
           },
         ),
       )
@@ -899,7 +900,7 @@ export default function App() {
       ? `${focusTimer.phase === 'paused' ? '⏸' : '⏱️'} ${formatTimer(focusTimer.remaining)}`
       : null
 
-  const visibleBubble = timerBubble ?? bubbleMessage
+  const visibleBubble = stickyBubble ?? timerBubble ?? bubbleMessage
 
   const { hit: hitSize, sprite: spriteSize } = PET_SIZE_DIMS[petSize]
 
@@ -926,11 +927,21 @@ export default function App() {
           alignItems: 'flex-end',
           justifyContent: 'center',
           paddingBottom: 4,
-          pointerEvents: 'none',
+          pointerEvents: stickyBubble ? 'auto' : 'none',
         }}
       >
         <AnimatePresence>
-          {visibleBubble && <PetSpeechBubble key={visibleBubble} message={visibleBubble} />}
+          {visibleBubble && (
+            <PetSpeechBubble
+              key={visibleBubble}
+              message={visibleBubble}
+              onDismiss={
+                stickyBubble && visibleBubble === stickyBubble
+                  ? () => setStickyBubble(null)
+                  : undefined
+              }
+            />
+          )}
         </AnimatePresence>
       </div>
 
