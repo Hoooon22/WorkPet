@@ -948,6 +948,7 @@ fn build_tray(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
                     if let Some(w) = app.get_webview_window("pet") {
                         position_bottom_right(&w);
                     }
+                    let _ = app.emit("orbit:wander-pause", ());
                 }
                 _ => {}
             }
