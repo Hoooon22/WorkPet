@@ -29,7 +29,7 @@ const TOOLS: { id: ToolId; label: string; emoji: string }[] = [
   { id: 'summarize', label: '요약', emoji: '📝' },
   { id: 'ask', label: '질문', emoji: '🤔' },
   { id: 'memo', label: '빠른 메모', emoji: '📋' },
-  { id: 'color', label: '색상 픽커', emoji: '🎨' },
+  { id: 'color', label: '색상 추출', emoji: '🎨' },
   { id: 'wordcount', label: '글자수', emoji: '🔢' },
   { id: 'screenshot', label: '영역 캡처', emoji: '📸' },
 ]

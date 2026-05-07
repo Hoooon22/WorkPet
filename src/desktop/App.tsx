@@ -316,6 +316,9 @@ export default function App() {
       const offOpenPanel = await listen('orbit:open-panel', async () => {
         await openPanel()
       })
+      const offColorResult = await listen<string>('orbit:color-result', (e) => {
+        showBubble(`📋 색상코드 ${e.payload.toUpperCase()} 가 복사되었습니다`, 2500)
+      })
       const offOpenGacha = await listen('orbit:open-gacha', async () => {
         if (!signedIn) return
         void invoke('open_gacha').catch(() => {})
@@ -353,6 +356,7 @@ export default function App() {
         offBriefing,
         offGacha,
         offOpenPanel,
+        offColorResult,
         offOpenGacha,
         offFetchNow,
         offAuthToggle,

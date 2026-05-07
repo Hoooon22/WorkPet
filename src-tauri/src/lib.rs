@@ -450,6 +450,84 @@ async fn close_screenshot_overlay(app: AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
+async fn open_color_picker_overlay(app: AppHandle) -> Result<(), String> {
+    if app.get_webview_window("color-picker").is_some() {
+        return Ok(());
+    }
+    let monitor = app
+        .get_webview_window("pet")
+        .and_then(|w| w.primary_monitor().ok().flatten());
+    let (mx, my, mw, mh, scale) = if let Some(m) = monitor {
+        (
+            m.position().x,
+            m.position().y,
+            m.size().width as f64,
+            m.size().height as f64,
+            m.scale_factor(),
+        )
+    } else {
+        (0, 0, 1920.0, 1080.0, 1.0)
+    };
+
+    let logical_w = mw / scale;
+    let logical_h = mh / scale;
+
+    let win = WebviewWindowBuilder::new(
+        &app,
+        "color-picker",
+        WebviewUrl::App("screenshot.html".into()),
+    )
+    .title("Orbit Color Picker")
+    .inner_size(logical_w, logical_h)
+    .decorations(false)
+    .transparent(true)
+    .always_on_top(true)
+    .skip_taskbar(true)
+    .resizable(false)
+    .shadow(false)
+    .accept_first_mouse(true)
+    .visible(false)
+    .build()
+    .map_err(|e| format!("color picker build: {e}"))?;
+    let _ = win.set_position(PhysicalPosition::new(mx, my));
+    let _ = win.show();
+    let _ = win.set_focus();
+    Ok(())
+}
+
+#[tauri::command]
+async fn pick_pixel(x: i32, y: i32) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || -> Result<String, String> {
+        use screenshots::Screen;
+        let screens = Screen::all().map_err(|e| format!("screens: {e}"))?;
+        let screen = screens
+            .into_iter()
+            .find(|s| {
+                let info = &s.display_info;
+                x >= info.x
+                    && y >= info.y
+                    && x < info.x + info.width as i32
+                    && y < info.y + info.height as i32
+            })
+            .ok_or_else(|| "no matching screen for pixel".to_string())?;
+
+        let local_x = x - screen.display_info.x;
+        let local_y = y - screen.display_info.y;
+        let img = screen
+            .capture_area(local_x, local_y, 1, 1)
+            .map_err(|e| format!("capture: {e}"))?;
+
+        let raw = img.into_raw();
+        if raw.len() < 3 {
+            return Err("pixel data too short".into());
+        }
+        Ok(format!("#{:02X}{:02X}{:02X}", raw[0], raw[1], raw[2]))
+    })
+    .await
+    .map_err(|e| format!("spawn: {e}"))?
+}
+
+#[tauri::command]
 async fn capture_region(x: i32, y: i32, w: u32, h: u32) -> Result<String, String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<String, String> {
         use screenshots::Screen;
@@ -511,6 +589,8 @@ pub fn run() {
             open_screenshot_overlay,
             close_screenshot_overlay,
             capture_region,
+            open_color_picker_overlay,
+            pick_pixel,
             set_auth_state
         ])
         .setup(|app| {
