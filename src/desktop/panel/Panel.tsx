@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { listen, emit } from '@tauri-apps/api/event'
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { PhysicalPosition } from '@tauri-apps/api/dpi'
+import { invoke } from '@tauri-apps/api/core'
 import type {
   BriefingPayload,
   FocusTimerState,
@@ -96,6 +97,25 @@ export default function Panel() {
           return
         }
         setDetached(true)
+      })
+    })()
+    return () => unlisten?.()
+  }, [])
+
+  // Auto-close on focus loss (click outside)
+  useEffect(() => {
+    let unlisten: (() => void) | undefined
+    let hasBeenFocused = false
+    ;(async () => {
+      unlisten = await appWindow.onFocusChanged(async ({ payload: focused }) => {
+        if (focused) {
+          hasBeenFocused = true
+          return
+        }
+        if (!hasBeenFocused) return
+        hasBeenFocused = false
+        await emit('orbit:panel-closed')
+        await invoke('close_panel').catch(() => {})
       })
     })()
     return () => unlisten?.()

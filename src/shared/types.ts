@@ -55,6 +55,8 @@ export type SvgPetId =
   | 'bear'
 export type PetId = LottiePetId | SvgPetId
 
+export type PetSize = 'small' | 'medium' | 'large'
+
 export interface GachaResult {
   grade: 'COMMON' | 'RARE' | 'EPIC' | 'LEGENDARY'
   petId: PetId

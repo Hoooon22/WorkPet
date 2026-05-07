@@ -46,6 +46,7 @@ export const KEYS = {
   AUTH_EMAIL: 'auth:email',
   GEMINI_API_KEY: 'gemini:api_key',
   PET_KIND: 'pet:kind',
+  PET_SIZE: 'pet:size',
   WANDER_PAUSED: 'wander:paused',
   WINDOW_POSITION: 'window:position',
   ACTIVE_PET: 'pet:active',

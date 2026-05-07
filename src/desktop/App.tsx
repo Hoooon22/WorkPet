@@ -12,7 +12,9 @@ import type { PetAction } from './components/petActions'
 import type {
   BriefingPayload,
   GachaResult,
+  LottiePetId,
   PetId,
+  PetSize,
   PetState,
   FocusTimerState,
 } from '../shared/types'
@@ -108,6 +110,21 @@ type WanderPhase = 'idle' | 'walk'
 
 const ONESHOT_ACTIONS: PetAction[] = ['jump', 'love', 'wave', 'dance', 'stretch', 'peek']
 
+const PET_SIZE_DIMS: Record<PetSize, { hit: number; sprite: number }> = {
+  small: { hit: 120, sprite: 80 },
+  medium: { hit: 160, sprite: 120 },
+  large: { hit: 200, sprite: 160 },
+}
+
+const isPetSize = (s: unknown): s is PetSize =>
+  s === 'small' || s === 'medium' || s === 'large'
+
+// Lottie frame ranges where the pet is visually standing still (window must not step here).
+// Other Lottie pets loop a continuous walking gait, so they need no entry.
+const LOTTIE_REST_RANGES: Partial<Record<LottiePetId, [number, number]>> = {
+  raccoon: [84, 180],
+}
+
 const randomBetween = (min: number, max: number) => Math.random() * (max - min) + min
 const pickRandom = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)]
 
@@ -150,6 +167,7 @@ export default function App() {
   const [wanderAction, setWanderAction] = useState<WanderPhase>('idle')
   const [oneShotAction, setOneShotAction] = useState<PetAction | null>(null)
   const [petKind, setPetKind] = useState<PetId>('fox')
+  const [petSize, setPetSize] = useState<PetSize>('medium')
   const [wanderPaused, setWanderPaused] = useState(false)
 
   // Orchestrator state
@@ -164,6 +182,9 @@ export default function App() {
 
   const wanderActionRef = useRef<WanderPhase>('idle')
   const wanderPausedRef = useRef(false)
+  const petStateRef = useRef<PetState>('idle')
+  const petKindRef = useRef<PetId>('fox')
+  const currentLottieFrameRef = useRef(0)
   const oneShotTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const boundsRef = useRef<ScreenBounds | null>(null)
@@ -177,13 +198,26 @@ export default function App() {
 
   const mouseDownAtRef = useRef<{ x: number; y: number } | null>(null)
   const dragStartedRef = useRef(false)
+  const lastPanelClosedAtRef = useRef(0)
 
   useEffect(() => {
     wanderActionRef.current = wanderAction
   }, [wanderAction])
   useEffect(() => {
     wanderPausedRef.current = wanderPaused
+    void invoke('set_wander_paused_state', { paused: wanderPaused }).catch(() => {})
   }, [wanderPaused])
+  useEffect(() => {
+    petStateRef.current = petState
+    void invoke('set_dismissed_state', { dismissed: petState === 'dismissed' }).catch(() => {})
+  }, [petState])
+  useEffect(() => {
+    petKindRef.current = petKind
+    currentLottieFrameRef.current = 0
+  }, [petKind])
+  useEffect(() => {
+    void invoke('set_pet_size_state', { size: petSize }).catch(() => {})
+  }, [petSize])
 
   // ── Setup: bounds, store, persisted state, onMoved, scheduler ─
   useEffect(() => {
@@ -198,6 +232,9 @@ export default function App() {
 
       const savedKind = await getValue<string>(KEYS.PET_KIND)
       if (isPetId(savedKind)) setPetKind(savedKind)
+
+      const savedSize = await getValue<string>(KEYS.PET_SIZE)
+      if (isPetSize(savedSize)) setPetSize(savedSize)
 
       const savedPaused = await getValue<boolean>(KEYS.WANDER_PAUSED)
       if (typeof savedPaused === 'boolean') setWanderPaused(savedPaused)
@@ -238,7 +275,7 @@ export default function App() {
       // Briefing scheduler
       startBriefingScheduler()
 
-      unlistenMoved = await appWindow.onMoved(async ({ payload }) => {
+      const off = await appWindow.onMoved(async ({ payload }) => {
         // Always sync cache, even for programmatic moves (cheap and keeps cache true).
         posCache.x = payload.x
         posCache.y = payload.y
@@ -266,6 +303,10 @@ export default function App() {
           void emit('orbit:pet-moved', { x: targetX, y: b.groundY })
         }, DRAG_END_DEBOUNCE_MS)
       })
+      // If cleanup already ran (StrictMode double-mount), unregister immediately
+      // — otherwise the leaked listener fires twice for every drag.
+      if (cancelled) off()
+      else unlistenMoved = off
     })()
 
     return () => {
@@ -280,87 +321,139 @@ export default function App() {
   useEffect(() => {
     const offs: Array<() => void> = []
     let cancelled = false
+    // Push the off-fn into offs as soon as listen() resolves. If cleanup already
+    // ran (cancelled=true), unregister immediately — otherwise StrictMode's
+    // double-mount leaks the first round of listeners (cleanup runs before the
+    // async IIFE has populated offs).
+    const register = (off: () => void) => {
+      if (cancelled) off()
+      else offs.push(off)
+    }
     ;(async () => {
-      const offKind = await listen<string>('orbit:pet-kind', async (e) => {
-        if (cancelled) return
-        const kind = e.payload
-        if (!isPetId(kind)) return
-        setPetKind(kind)
-        await setValue(KEYS.PET_KIND, kind)
-      })
-      const offWander = await listen('orbit:toggle-wander', () => {
-        if (cancelled) return
-        setWanderPaused((prev) => {
-          const next = !prev
-          void setValue(KEYS.WANDER_PAUSED, next)
-          return next
-        })
-      })
-      const offBriefing = await listen<BriefingPayload>(
-        'orbit:briefing-alert',
-        (e) => {
+      register(
+        await listen<string>('orbit:pet-kind', async (e) => {
+          if (cancelled) return
+          const kind = e.payload
+          if (!isPetId(kind)) return
+          setPetKind(kind)
+          await setValue(KEYS.PET_KIND, kind)
+        }),
+      )
+      register(
+        await listen<string>('orbit:pet-size', async (e) => {
+          if (cancelled) return
+          const size = e.payload
+          if (!isPetSize(size)) return
+          setPetSize(size)
+          await setValue(KEYS.PET_SIZE, size)
+        }),
+      )
+      register(
+        await listen('orbit:toggle-wander', () => {
+          if (cancelled) return
+          setWanderPaused((prev) => {
+            const next = !prev
+            void setValue(KEYS.WANDER_PAUSED, next)
+            return next
+          })
+        }),
+      )
+      register(
+        await listen<BriefingPayload>('orbit:briefing-alert', (e) => {
           setBriefing(e.payload)
           setPetState('alert')
-        },
+        }),
       )
-      const offGacha = await listen<GachaResult>('orbit:gacha-result', async (e) => {
-        const pet = e.payload
-        await setValue(KEYS.ACTIVE_PET, pet)
-        setActivePet(pet)
-        if (isPetId(pet.petId)) {
-          setPetKind(pet.petId)
-          await setValue(KEYS.PET_KIND, pet.petId)
-        }
-        showBubble(`안녕! 나는 ${pet.name}이야 🎉`, 4000)
-      })
-      const offOpenPanel = await listen('orbit:open-panel', async () => {
-        await openPanel()
-      })
-      const offColorResult = await listen<string>('orbit:color-result', (e) => {
-        showBubble(`📋 색상코드 ${e.payload.toUpperCase()} 가 복사되었습니다`, 2500)
-      })
-      const offOpenGacha = await listen('orbit:open-gacha', async () => {
-        if (!signedIn) return
-        void invoke('open_gacha').catch(() => {})
-      })
-      const offFetchNow = await listen('orbit:fetch-now', async () => {
-        void fetchNow().catch(() => {})
-      })
-      const offAuthToggle = await listen('orbit:auth-toggle', async () => {
-        try {
-          if (await checkSignedIn()) {
-            await signOut()
-            setSignedIn(false)
-            showBubble('잘 있어요! 또 봐요 👋', 2500)
-          } else {
-            const { email } = await signIn()
-            setSignedIn(true)
-            const hour = new Date().getHours()
-            const greet = hour < 12 ? '좋은 아침이에요' : '안녕하세요'
-            showBubble(`${greet}${email ? `, ${email}` : ''}! 😊`, 3500)
-            void fetchNow().catch(() => {})
+      register(
+        await listen<GachaResult>('orbit:gacha-result', async (e) => {
+          const pet = e.payload
+          await setValue(KEYS.ACTIVE_PET, pet)
+          setActivePet(pet)
+          if (isPetId(pet.petId)) {
+            setPetKind(pet.petId)
+            await setValue(KEYS.PET_KIND, pet.petId)
           }
-        } catch (err) {
-          console.warn('[orbit] auth toggle failed', err)
-        }
-      })
-      const offPanelAction = await listen<{ type: string; payload?: unknown }>(
-        'orbit:panel-action',
-        (e) => {
-          handlePanelAction(e.payload.type, e.payload.payload)
-        },
+          showBubble(`안녕! 나는 ${pet.name}이야 🎉`, 4000)
+        }),
       )
-      offs.push(
-        offKind,
-        offWander,
-        offBriefing,
-        offGacha,
-        offOpenPanel,
-        offColorResult,
-        offOpenGacha,
-        offFetchNow,
-        offAuthToggle,
-        offPanelAction,
+      register(
+        await listen('orbit:open-panel', async () => {
+          await openPanel()
+        }),
+      )
+      register(
+        await listen<string>('orbit:color-result', (e) => {
+          showBubble(`📋 색상코드 ${e.payload.toUpperCase()} 가 복사되었습니다`, 2500)
+        }),
+      )
+      register(
+        await listen<string>('orbit:screenshot-result', async (e) => {
+          try {
+            await appWindow.show()
+            const { Image } = await import('@tauri-apps/api/image')
+            const { writeImage } = await import('@tauri-apps/plugin-clipboard-manager')
+            const base64 = e.payload.replace(/^data:image\/png;base64,/, '')
+            const binary = atob(base64)
+            const bytes = new Uint8Array(binary.length)
+            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+            const image = await Image.fromBytes(bytes)
+            await writeImage(image)
+            showBubble('📷 화면 캡처가 클립보드에 복사되었습니다', 2500)
+          } catch (err) {
+            console.warn('[orbit] screenshot copy failed', err)
+            showBubble('😢 캡처 복사에 실패했어요', 2500)
+          }
+        }),
+      )
+      register(
+        await listen('orbit:open-gacha', async () => {
+          if (!signedIn) return
+          void invoke('open_gacha').catch(() => {})
+        }),
+      )
+      register(
+        await listen('orbit:fetch-now', async () => {
+          void fetchNow().catch(() => {})
+        }),
+      )
+      register(
+        await listen('orbit:auth-toggle', async () => {
+          try {
+            if (await checkSignedIn()) {
+              await signOut()
+              setSignedIn(false)
+              showBubble('잘 있어요! 또 봐요 👋', 2500)
+            } else {
+              const { email } = await signIn()
+              setSignedIn(true)
+              const hour = new Date().getHours()
+              const greet = hour < 12 ? '좋은 아침이에요' : '안녕하세요'
+              showBubble(`${greet}${email ? `, ${email}` : ''}! 😊`, 3500)
+              void fetchNow().catch(() => {})
+            }
+          } catch (err) {
+            console.warn('[orbit] auth toggle failed', err)
+          }
+        }),
+      )
+      register(
+        await listen<{ type: string; payload?: unknown }>('orbit:panel-action', (e) => {
+          handlePanelAction(e.payload.type, e.payload.payload)
+        }),
+      )
+      register(
+        await listen('orbit:toggle-dismiss', () => {
+          if (cancelled) return
+          if (petStateRef.current === 'dismissed') handlePanelAction('show-pet')
+          else handlePanelAction('dismiss-pet')
+        }),
+      )
+      register(
+        await listen('orbit:panel-closed', () => {
+          if (cancelled) return
+          lastPanelClosedAtRef.current = Date.now()
+          setPanelOpen(false)
+        }),
       )
     })()
     return () => {
@@ -460,7 +553,7 @@ export default function App() {
       if (cancelled || inFlight) return
       const bounds = boundsRef.current
       if (!bounds) return
-      if (wanderPausedRef.current || petState === 'dismissed') {
+      if (wanderPausedRef.current || petState === 'dismissed' || !signedIn) {
         if (phase === 'walk') enterIdle(Date.now())
         return
       }
@@ -475,6 +568,14 @@ export default function App() {
         else enterIdle(now)
       }
       if (phase !== 'walk') return
+      // If the active Lottie pet is currently in a standing-pose frame range,
+      // hold position so the window does not slide while the legs are still.
+      const kind = petKindRef.current
+      const restRange = isLottiePetId(kind) ? LOTTIE_REST_RANGES[kind] : undefined
+      if (restRange) {
+        const f = currentLottieFrameRef.current
+        if (f >= restRange[0] && f < restRange[1]) return
+      }
       const curX = posCache.x
       const curY = posCache.y
       let nextX = curX + walkDir * STEP_PX
@@ -502,7 +603,7 @@ export default function App() {
       cancelled = true
       clearInterval(id)
     }
-  }, [petState])
+  }, [petState, signedIn])
 
   // ── Sleepy state ──
   useEffect(() => {
@@ -756,10 +857,12 @@ export default function App() {
   const handleMouseUp = () => {
     const wasClick = mouseDownAtRef.current && !dragStartedRef.current
     mouseDownAtRef.current = null
-    if (wasClick) {
-      // Single click: toggle panel
-      if (panelOpen) void closePanel()
-      else void openPanel()
+    if (!wasClick) return
+    const justClosedByBlur = Date.now() - lastPanelClosedAtRef.current < 250
+    if (panelOpen || justClosedByBlur) {
+      void closePanel()
+    } else {
+      void openPanel()
     }
   }
 
@@ -775,8 +878,8 @@ export default function App() {
     oneShotAction ??
     (isSleepy ? 'sleep' : wanderPaused ? 'sleep' : wanderAction)
 
-  // Pet hidden when dismissed
-  const showPet = petState !== 'dismissed'
+  // Pet hidden when dismissed or signed out (no signed-in account → no briefing → no reason to show)
+  const showPet = signedIn && petState !== 'dismissed'
 
   // Live focus timer bubble (overrides default bubble)
   const timerBubble =
@@ -785,6 +888,8 @@ export default function App() {
       : null
 
   const visibleBubble = timerBubble ?? bubbleMessage
+
+  const { hit: hitSize, sprite: spriteSize } = PET_SIZE_DIMS[petSize]
 
   return (
     <div
@@ -825,8 +930,8 @@ export default function App() {
           onMouseLeave={handleMouseLeave}
           onDoubleClick={handleDoubleClick}
           style={{
-            width: 160,
-            height: 160,
+            width: hitSize,
+            height: hitSize,
             display: 'flex',
             alignItems: 'flex-end',
             justifyContent: 'center',
@@ -835,11 +940,18 @@ export default function App() {
           }}
         >
           {isLottiePetId(petKind) ? (
-            <LottiePet kind={petKind} size={120} direction={direction} />
+            <LottiePet
+              kind={petKind}
+              size={spriteSize}
+              direction={direction}
+              onFrame={(f) => {
+                currentLottieFrameRef.current = f
+              }}
+            />
           ) : isSvgPetId(petKind) ? (
             <SvgPet
               kind={petKind}
-              size={120}
+              size={spriteSize}
               action={effectiveAction}
               mood={petState === 'alert' ? 'happy' : isSleepy ? 'sleepy' : 'happy'}
               direction={direction}

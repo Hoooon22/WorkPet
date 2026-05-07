@@ -9,16 +9,31 @@ use std::time::Duration;
 use tauri::{
     menu::{CheckMenuItemBuilder, MenuBuilder, MenuItemBuilder, SubmenuBuilder},
     tray::TrayIconBuilder,
-    AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize, WebviewUrl, WebviewWindowBuilder,
+    AppHandle, Emitter, Manager, PhysicalPosition, WebviewUrl, WebviewWindowBuilder,
 };
 
 // ─────────────────────────────────────────────────────────────────────────
 // State
 // ─────────────────────────────────────────────────────────────────────────
 
-#[derive(Default)]
 struct TrayState {
     signed_in_email: Mutex<Option<String>>,
+    dismissed: Mutex<bool>,
+    wander_paused: Mutex<bool>,
+    pet_size: Mutex<String>,
+    panel_visible_before_capture: Mutex<bool>,
+}
+
+impl Default for TrayState {
+    fn default() -> Self {
+        Self {
+            signed_in_email: Mutex::new(None),
+            dismissed: Mutex::new(false),
+            wander_paused: Mutex::new(false),
+            pet_size: Mutex::new("medium".to_string()),
+            panel_visible_before_capture: Mutex::new(false),
+        }
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -293,7 +308,6 @@ async fn open_panel(
     let win = WebviewWindowBuilder::new(&app, "panel", WebviewUrl::App("panel.html".into()))
         .title("Orbit Panel")
         .inner_size(PANEL_WIDTH as f64, PANEL_HEIGHT as f64)
-        .position(target_x as f64, target_y as f64)
         .decorations(false)
         .transparent(true)
         .always_on_top(true)
@@ -301,35 +315,46 @@ async fn open_panel(
         .resizable(false)
         .shadow(false)
         .accept_first_mouse(true)
+        .visible(false)
         .build()
         .map_err(|e| format!("panel build: {e}"))?;
+    let _ = win.set_position(PhysicalPosition::new(target_x, target_y));
     let _ = win.show();
     let _ = win.set_focus();
     Ok(())
 }
 
 fn panel_anchor_position(app: &AppHandle, anchor_x: i32, anchor_y: i32) -> (i32, i32) {
-    // Place panel next to the visible pet sprite, not the transparent window edges.
-    let gap: i32 = 8;
-
-    let monitor_size = app
+    // anchor_x/anchor_y come from the JS side as physical pixels (outerPosition).
+    // PANEL_WIDTH/HEIGHT and PET_WINDOW_W/H are logical pixels (used by the builder's inner_size).
+    // Convert all logical constants to physical via the monitor's scale_factor before mixing.
+    let monitor = app
         .get_webview_window("pet")
-        .and_then(|w| w.primary_monitor().ok().flatten())
-        .map(|m| m.size().clone())
-        .unwrap_or(PhysicalSize::new(1920, 1080));
+        .and_then(|w| w.primary_monitor().ok().flatten());
+    let (monitor_w_phys, scale) = match monitor {
+        Some(m) => (m.size().width as i32, m.scale_factor()),
+        None => (1920, 1.0),
+    };
+    let to_phys = |v: i32| (v as f64 * scale) as i32;
 
-    let pet_visual_left = anchor_x + PET_VISUAL_PAD_X;
-    let pet_visual_right = anchor_x + PET_WINDOW_W - PET_VISUAL_PAD_X;
+    let gap = to_phys(8);
+    let panel_w_phys = to_phys(PANEL_WIDTH as i32);
+    let panel_h_phys = to_phys(PANEL_HEIGHT as i32);
+    let pet_window_w_phys = to_phys(PET_WINDOW_W);
+    let pet_window_h_phys = to_phys(PET_WINDOW_H);
+    let pet_visual_pad_phys = to_phys(PET_VISUAL_PAD_X);
+
+    let pet_visual_left = anchor_x + pet_visual_pad_phys;
+    let pet_visual_right = anchor_x + pet_window_w_phys - pet_visual_pad_phys;
 
     let want_right = pet_visual_right + gap;
-    let target_x = if want_right + (PANEL_WIDTH as i32) > monitor_size.width as i32 {
-        pet_visual_left - PANEL_WIDTH as i32 - gap
+    let target_x = if want_right + panel_w_phys > monitor_w_phys {
+        pet_visual_left - panel_w_phys - gap
     } else {
         want_right
     };
 
-    // Bottom-align panel with pet sprite bottom (= pet window bottom).
-    let target_y = anchor_y + PET_WINDOW_H - PANEL_HEIGHT as i32;
+    let target_y = anchor_y + pet_window_h_phys - panel_h_phys;
     let clamped_y = target_y.max(0);
 
     (target_x.max(0), clamped_y)
@@ -360,24 +385,27 @@ async fn open_gacha(app: AppHandle) -> Result<(), String> {
     let monitor = app
         .get_webview_window("pet")
         .and_then(|w| w.primary_monitor().ok().flatten());
-    let (mx, my, mw, mh) = if let Some(m) = monitor {
+    let (mx, my, mw, mh, scale) = if let Some(m) = monitor {
         (
-            m.position().x as f64,
-            m.position().y as f64,
-            m.size().width as f64,
-            m.size().height as f64,
+            m.position().x,
+            m.position().y,
+            m.size().width as i32,
+            m.size().height as i32,
+            m.scale_factor(),
         )
     } else {
-        (0.0, 0.0, 1920.0, 1080.0)
+        (0, 0, 1920, 1080, 1.0)
     };
 
-    let center_x = mx + (mw - GACHA_WIDTH as f64) / 2.0;
-    let center_y = my + (mh - GACHA_HEIGHT as f64) / 2.0;
+    let gacha_w_phys = (GACHA_WIDTH as f64 * scale) as i32;
+    let gacha_h_phys = (GACHA_HEIGHT as f64 * scale) as i32;
+
+    let center_x = mx + (mw - gacha_w_phys) / 2;
+    let center_y = my + (mh - gacha_h_phys) / 2;
 
     let win = WebviewWindowBuilder::new(&app, "gacha", WebviewUrl::App("gacha.html".into()))
         .title("Orbit Gacha")
         .inner_size(GACHA_WIDTH as f64, GACHA_HEIGHT as f64)
-        .position(center_x, center_y)
         .decorations(false)
         .transparent(true)
         .always_on_top(true)
@@ -385,8 +413,10 @@ async fn open_gacha(app: AppHandle) -> Result<(), String> {
         .resizable(false)
         .shadow(false)
         .accept_first_mouse(true)
+        .visible(false)
         .build()
         .map_err(|e| format!("gacha build: {e}"))?;
+    let _ = win.set_position(PhysicalPosition::new(center_x, center_y));
     let _ = win.show();
     let _ = win.set_focus();
     Ok(())
@@ -408,16 +438,21 @@ async fn open_screenshot_overlay(app: AppHandle) -> Result<(), String> {
     let monitor = app
         .get_webview_window("pet")
         .and_then(|w| w.primary_monitor().ok().flatten());
-    let (mx, my, mw, mh) = if let Some(m) = monitor {
+    let (mx, my, mw, mh, scale) = if let Some(m) = monitor {
         (
-            m.position().x as f64,
-            m.position().y as f64,
+            m.position().x,
+            m.position().y,
             m.size().width as f64,
             m.size().height as f64,
+            m.scale_factor(),
         )
     } else {
-        (0.0, 0.0, 1920.0, 1080.0)
+        (0, 0, 1920.0, 1080.0, 1.0)
     };
+
+    // inner_size() expects logical pixels; convert from monitor's physical size.
+    let logical_w = mw / scale;
+    let logical_h = mh / scale;
 
     let win = WebviewWindowBuilder::new(
         &app,
@@ -425,8 +460,7 @@ async fn open_screenshot_overlay(app: AppHandle) -> Result<(), String> {
         WebviewUrl::App("screenshot.html".into()),
     )
     .title("Orbit Screenshot")
-    .inner_size(mw, mh)
-    .position(mx, my)
+    .inner_size(logical_w, logical_h)
     .decorations(false)
     .transparent(true)
     .always_on_top(true)
@@ -434,8 +468,28 @@ async fn open_screenshot_overlay(app: AppHandle) -> Result<(), String> {
     .resizable(false)
     .shadow(false)
     .accept_first_mouse(true)
+    .visible(false)
     .build()
     .map_err(|e| format!("screenshot build: {e}"))?;
+
+    // Remember panel visibility, then hide pet & panel so they don't appear
+    // in the capture or block the overlay.
+    let state = app.state::<TrayState>();
+    let panel_was_visible = app
+        .get_webview_window("panel")
+        .and_then(|w| w.is_visible().ok())
+        .unwrap_or(false);
+    if let Ok(mut g) = state.panel_visible_before_capture.lock() {
+        *g = panel_was_visible;
+    }
+    if let Some(pet) = app.get_webview_window("pet") {
+        let _ = pet.hide();
+    }
+    if let Some(panel) = app.get_webview_window("panel") {
+        let _ = panel.hide();
+    }
+
+    let _ = win.set_position(PhysicalPosition::new(mx, my));
     let _ = win.show();
     let _ = win.set_focus();
     Ok(())
@@ -445,6 +499,25 @@ async fn open_screenshot_overlay(app: AppHandle) -> Result<(), String> {
 async fn close_screenshot_overlay(app: AppHandle) -> Result<(), String> {
     if let Some(w) = app.get_webview_window("screenshot") {
         let _ = w.close();
+    }
+
+    let state = app.state::<TrayState>();
+    let dismissed = state.dismissed.lock().ok().map(|g| *g).unwrap_or(false);
+    if !dismissed {
+        if let Some(pet) = app.get_webview_window("pet") {
+            let _ = pet.show();
+        }
+    }
+    let panel_was_visible = state
+        .panel_visible_before_capture
+        .lock()
+        .ok()
+        .map(|g| *g)
+        .unwrap_or(false);
+    if panel_was_visible {
+        if let Some(panel) = app.get_webview_window("panel") {
+            let _ = panel.show();
+        }
     }
     Ok(())
 }
@@ -591,7 +664,10 @@ pub fn run() {
             capture_region,
             open_color_picker_overlay,
             pick_pixel,
-            set_auth_state
+            set_auth_state,
+            set_dismissed_state,
+            set_wander_paused_state,
+            set_pet_size_state
         ])
         .setup(|app| {
             #[cfg(target_os = "macos")]
@@ -617,6 +693,48 @@ fn set_auth_state(
 ) -> Result<(), String> {
     if let Ok(mut guard) = state.signed_in_email.lock() {
         *guard = if signed_in { email } else { None };
+    }
+    let _ = refresh_tray_menu(&app);
+    Ok(())
+}
+
+#[tauri::command]
+fn set_dismissed_state(
+    app: AppHandle,
+    state: tauri::State<'_, TrayState>,
+    dismissed: bool,
+) -> Result<(), String> {
+    if let Ok(mut guard) = state.dismissed.lock() {
+        *guard = dismissed;
+    }
+    let _ = refresh_tray_menu(&app);
+    Ok(())
+}
+
+#[tauri::command]
+fn set_wander_paused_state(
+    app: AppHandle,
+    state: tauri::State<'_, TrayState>,
+    paused: bool,
+) -> Result<(), String> {
+    if let Ok(mut guard) = state.wander_paused.lock() {
+        *guard = paused;
+    }
+    let _ = refresh_tray_menu(&app);
+    Ok(())
+}
+
+#[tauri::command]
+fn set_pet_size_state(
+    app: AppHandle,
+    state: tauri::State<'_, TrayState>,
+    size: String,
+) -> Result<(), String> {
+    if !matches!(size.as_str(), "small" | "medium" | "large") {
+        return Err(format!("invalid pet size: {size}"));
+    }
+    if let Ok(mut guard) = state.pet_size.lock() {
+        *guard = size;
     }
     let _ = refresh_tray_menu(&app);
     Ok(())
@@ -663,15 +781,15 @@ fn position_bottom_right(window: &tauri::WebviewWindow) {
 // ─────────────────────────────────────────────────────────────────────────
 
 const PET_OPTIONS: &[(&str, &str)] = &[
-    ("pet:fox", "🦊 여우"),
-    ("pet:frog", "🐸 개구리"),
-    ("pet:penguin", "🐧 펭귄"),
-    ("pet:turtle", "🐢 거북이"),
-    ("pet:owl", "🦉 부엉이"),
-    ("pet:octopus", "🐙 문어"),
-    ("pet:chick", "🐥 병아리"),
-    ("pet:bear", "🐻 곰"),
-    ("pet:cat", "🐱 고양이"),
+    // ("pet:fox", "🦊 여우"),
+    // ("pet:frog", "🐸 개구리"),
+    // ("pet:penguin", "🐧 펭귄"),
+    // ("pet:turtle", "🐢 거북이"),
+    // ("pet:owl", "🦉 부엉이"),
+    // ("pet:octopus", "🐙 문어"),
+    // ("pet:chick", "🐥 병아리"),
+    // ("pet:bear", "🐻 곰"),
+    // ("pet:cat", "🐱 고양이"),
     ("pet:rabbit", "🐰 토끼"),
     ("pet:hedgehog", "🦔 고슴도치"),
     ("pet:raccoon", "🦝 너구리"),
@@ -693,15 +811,31 @@ fn build_tray_menu(app: &AppHandle) -> Result<tauri::menu::Menu<tauri::Wry>, Box
     }
     let pet_submenu = pet_builder.build()?;
 
-    let pause_item = CheckMenuItemBuilder::new("걷기 일시정지")
-        .id("wander:toggle")
-        .checked(false)
-        .build(app)?;
+    let pet_size: String = app
+        .state::<TrayState>()
+        .pet_size
+        .lock()
+        .ok()
+        .map(|g| g.clone())
+        .unwrap_or_else(|| "medium".to_string());
 
-    let hide_item = CheckMenuItemBuilder::new("펫 숨김")
-        .id("window:toggle-hide")
-        .checked(false)
+    let size_small = CheckMenuItemBuilder::new("작게")
+        .id("size:small")
+        .checked(pet_size == "small")
         .build(app)?;
+    let size_medium = CheckMenuItemBuilder::new("보통")
+        .id("size:medium")
+        .checked(pet_size == "medium")
+        .build(app)?;
+    let size_large = CheckMenuItemBuilder::new("크게")
+        .id("size:large")
+        .checked(pet_size == "large")
+        .build(app)?;
+    let size_submenu = SubmenuBuilder::new(app, "펫 크기")
+        .item(&size_small)
+        .item(&size_medium)
+        .item(&size_large)
+        .build()?;
 
     let signed_in_email: Option<String> = app
         .state::<TrayState>()
@@ -710,14 +844,41 @@ fn build_tray_menu(app: &AppHandle) -> Result<tauri::menu::Menu<tauri::Wry>, Box
         .ok()
         .and_then(|g| g.clone());
 
+    let dismissed: bool = app
+        .state::<TrayState>()
+        .dismissed
+        .lock()
+        .ok()
+        .map(|g| *g)
+        .unwrap_or(false);
+
+    let wander_paused: bool = app
+        .state::<TrayState>()
+        .wander_paused
+        .lock()
+        .ok()
+        .map(|g| *g)
+        .unwrap_or(false);
+
+    let pause_item = CheckMenuItemBuilder::new("걷기 일시정지")
+        .id("wander:toggle")
+        .checked(wander_paused)
+        .build(app)?;
+
     let auth_label = match &signed_in_email {
         Some(email) => format!("로그아웃 ({})", email),
         None => "로그인".into(),
     };
     let auth_item = MenuItemBuilder::new(auth_label).id("auth:toggle").build(app)?;
 
+    let dismiss_label = if dismissed { "🐾 펫 소환" } else { "💤 펫 퇴장" };
+    let dismiss_item = MenuItemBuilder::new(dismiss_label)
+        .id("dismiss:toggle")
+        .build(app)?;
+
     let menu = MenuBuilder::new(app)
         .item(&pet_submenu)
+        .item(&size_submenu)
         .separator()
         .item(&auth_item)
         .text("panel:open", "패널 열기")
@@ -725,7 +886,7 @@ fn build_tray_menu(app: &AppHandle) -> Result<tauri::menu::Menu<tauri::Wry>, Box
         .text("brief:fetch", "브리핑 새로고침")
         .separator()
         .item(&pause_item)
-        .item(&hide_item)
+        .item(&dismiss_item)
         .separator()
         .text("pos:default", "기본 위치")
         .text("pos:bottom-right", "우하단으로")
@@ -757,6 +918,11 @@ fn build_tray(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
                 return;
             }
 
+            if let Some(size) = id.strip_prefix("size:") {
+                let _ = app.emit("orbit:pet-size", size.to_string());
+                return;
+            }
+
             match id {
                 "quit" => {
                     app.exit(0);
@@ -776,15 +942,8 @@ fn build_tray(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
                 "wander:toggle" => {
                     let _ = app.emit("orbit:toggle-wander", ());
                 }
-                "window:toggle-hide" => {
-                    if let Some(w) = app.get_webview_window("pet") {
-                        let visible = w.is_visible().unwrap_or(true);
-                        if visible {
-                            let _ = w.hide();
-                        } else {
-                            let _ = w.show();
-                        }
-                    }
+                "dismiss:toggle" => {
+                    let _ = app.emit("orbit:toggle-dismiss", ());
                 }
                 "pos:default" => {
                     if let Some(w) = app.get_webview_window("pet") {

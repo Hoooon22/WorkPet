@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import Lottie from 'lottie-react'
+import type { BMEnterFrameEvent } from 'lottie-web'
 import type { LottiePetId } from '../../shared/types'
 
 import catLottie from '../../assets/lottie/idle.json'
@@ -26,9 +27,10 @@ interface LottiePetProps {
   kind: LottiePetId
   direction?: 'left' | 'right'
   size?: number
+  onFrame?: (frame: number) => void
 }
 
-export default function LottiePet({ kind, direction = 'left', size = 120 }: LottiePetProps) {
+export default function LottiePet({ kind, direction = 'left', size = 120, onFrame }: LottiePetProps) {
   return (
     <motion.div
       animate={{ rotateY: direction === 'right' ? 180 : 0 }}
@@ -45,6 +47,9 @@ export default function LottiePet({ kind, direction = 'left', size = 120 }: Lott
         animationData={LOTTIE_MAP[kind]}
         loop
         autoplay
+        onEnterFrame={
+          onFrame ? (e) => onFrame((e as BMEnterFrameEvent).currentTime) : undefined
+        }
         style={{ width: '100%', height: '100%' }}
       />
     </motion.div>

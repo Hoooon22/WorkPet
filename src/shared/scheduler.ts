@@ -8,7 +8,7 @@ import {
   storeCurrentHistoryId,
 } from './briefing'
 import { isSignedIn } from './auth'
-import { setValue, KEYS } from './storage'
+import { getValue, setValue, KEYS } from './storage'
 import type { BriefingPayload } from './types'
 
 const ALARM_PERIOD_MS = 60_000
@@ -17,7 +17,9 @@ let started = false
 
 async function persistAndEmit(payload: BriefingPayload): Promise<void> {
   await setValue(KEYS.PET_BRIEFING, payload)
-  await setValue(KEYS.PET_DISMISSED, false)
+  // When the pet is dismissed, keep briefing data fresh but suppress alert state
+  // and bubble emit so the user's "퇴장" choice isn't overridden.
+  if (await getValue<boolean>(KEYS.PET_DISMISSED)) return
   await setValue(KEYS.PET_STATE, 'alert')
   await emit('orbit:briefing-alert', payload)
 }
