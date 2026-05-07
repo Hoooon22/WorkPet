@@ -947,6 +947,7 @@ export default function App() {
               kind={petKind}
               size={spriteSize}
               direction={direction}
+              walking={effectiveAction === 'walk'}
               onFrame={(f) => {
                 currentLottieFrameRef.current = f
               }}

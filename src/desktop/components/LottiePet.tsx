@@ -25,6 +25,21 @@ const LOTTIE_MAP: Record<LottiePetId, object> = {
   dragon: dragonLottie,
 }
 
+// Walking variants are auto-discovered: drop `<petId>.json` into
+// `src/assets/lottie/pets/walking/` and it'll be picked up here.
+const WALKING_MODULES = import.meta.glob<{ default: object }>(
+  '../../assets/lottie/pets/walking/*.json',
+  { eager: true },
+)
+const WALKING_LOTTIE_MAP: Partial<Record<LottiePetId, object>> = (() => {
+  const map: Partial<Record<LottiePetId, object>> = {}
+  for (const [path, mod] of Object.entries(WALKING_MODULES)) {
+    const id = path.split('/').pop()?.replace(/\.json$/, '') as LottiePetId | undefined
+    if (id) map[id] = mod.default
+  }
+  return map
+})()
+
 export const LOTTIE_PET_IDS: LottiePetId[] = [
   'cat',
   'rabbit',
@@ -45,10 +60,19 @@ interface LottiePetProps {
   kind: LottiePetId
   direction?: 'left' | 'right'
   size?: number
+  walking?: boolean
   onFrame?: (frame: number) => void
 }
 
-export default function LottiePet({ kind, direction = 'left', size = 120, onFrame }: LottiePetProps) {
+export default function LottiePet({
+  kind,
+  direction = 'left',
+  size = 120,
+  walking = false,
+  onFrame,
+}: LottiePetProps) {
+  const animationData =
+    (walking ? WALKING_LOTTIE_MAP[kind] : undefined) ?? LOTTIE_MAP[kind]
   return (
     <motion.div
       animate={{ rotateY: direction === 'right' ? 180 : 0 }}
@@ -62,7 +86,7 @@ export default function LottiePet({ kind, direction = 'left', size = 120, onFram
       }}
     >
       <Lottie
-        animationData={LOTTIE_MAP[kind]}
+        animationData={animationData}
         loop
         autoplay
         onEnterFrame={
