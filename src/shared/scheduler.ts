@@ -10,10 +10,12 @@ import {
 import { isSignedIn } from './auth'
 import { getValue, setValue, KEYS } from './storage'
 import { tickReminders } from './reminders'
+import { tickClipboard } from './clipboardHistory'
 import type { BriefingPayload } from './types'
 
 const ALARM_PERIOD_MS = 60_000
 const REMINDER_PERIOD_MS = 30_000
+const CLIPBOARD_PERIOD_MS = 1_500
 
 let started = false
 
@@ -57,6 +59,8 @@ export function startBriefingScheduler(): void {
     }, 5_000)
     void tickReminders().catch(() => {})
     setInterval(() => void tickReminders().catch(() => {}), REMINDER_PERIOD_MS)
+    void tickClipboard().catch(() => {})
+    setInterval(() => void tickClipboard().catch(() => {}), CLIPBOARD_PERIOD_MS)
   })()
 }
 

@@ -60,4 +60,5 @@ export const KEYS = {
   CALENDAR_LAST_CHECKED: 'calendar:last_checked',
   REMINDER_RULES: 'reminders:rules',
   REMINDER_LAST_FIRED: 'reminders:last_fired',
+  CLIPBOARD_HISTORY: 'clipboard:history',
 } as const

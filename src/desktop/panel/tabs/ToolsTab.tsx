@@ -10,6 +10,7 @@ import ColorPickerPanel from '../panels/ColorPickerPanel'
 import WordCountPanel from '../panels/WordCountPanel'
 import ScreenshotPanel from '../panels/ScreenshotPanel'
 import ReminderPanel from '../panels/ReminderPanel'
+import ClipboardHistoryPanel from '../panels/ClipboardHistoryPanel'
 
 interface Props {
   focusTimer: FocusTimerState
@@ -23,6 +24,7 @@ type ToolId =
   | 'summarize'
   | 'ask'
   | 'memo'
+  | 'clipboard'
   | 'color'
   | 'wordcount'
   | 'screenshot'
@@ -43,6 +45,7 @@ const TOOLS: ToolMeta[] = [
   { id: 'summarize',  label: '요약',       emoji: '📝', bg: '#fffbeb', border: '#fde68a', fg: '#d97706' },
   { id: 'ask',        label: '질문',       emoji: '🤔', bg: '#f5f3ff', border: '#ddd6fe', fg: '#7c3aed' },
   { id: 'memo',       label: '빠른 메모',   emoji: '📋', bg: '#f0fdf4', border: '#bbf7d0', fg: '#16a34a' },
+  { id: 'clipboard',  label: '클립보드',   emoji: '📎', bg: '#f0f9ff', border: '#bae6fd', fg: '#0369a1' },
   { id: 'color',      label: '색상 추출',   emoji: '🎨', bg: '#fdf2f8', border: '#fbcfe8', fg: '#db2777' },
   { id: 'wordcount',  label: '글자수',     emoji: '🔢', bg: '#f3f4f6', border: '#d1d5db', fg: '#4b5563' },
   { id: 'screenshot', label: '영역 캡처',   emoji: '📸', bg: '#ecfeff', border: '#a5f3fc', fg: '#0891b2' },
@@ -223,6 +226,7 @@ export default function ToolsTab({ focusTimer, action }: Props) {
               {active === 'summarize' && <SummarizePanel />}
               {active === 'ask' && <GeminiAskPanel />}
               {active === 'memo' && <QuickMemoPanel />}
+              {active === 'clipboard' && <ClipboardHistoryPanel />}
               {active === 'color' && <ColorPickerPanel />}
               {active === 'wordcount' && <WordCountPanel />}
               {active === 'screenshot' && <ScreenshotPanel />}

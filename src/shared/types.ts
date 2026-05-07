@@ -95,3 +95,9 @@ export interface ReminderRule {
   weekdaysOnly: boolean
   message?: string
 }
+
+export interface ClipboardEntry {
+  id: string
+  text: string
+  createdAt: number
+}
