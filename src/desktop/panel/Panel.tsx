@@ -200,7 +200,31 @@ export default function Panel() {
           cursor: 'move',
         }}
       >
-        <span style={{ fontSize: 18 }}>🤖</span>
+        <svg
+          width="22"
+          height="22"
+          viewBox="0 0 64 64"
+          aria-hidden="true"
+          style={{ flexShrink: 0 }}
+        >
+          <ellipse
+            cx="32"
+            cy="34"
+            rx="24"
+            ry="12"
+            fill="none"
+            stroke="rgba(255,255,255,0.55)"
+            strokeWidth="2.5"
+            transform="rotate(-18 32 34)"
+          />
+          <circle cx="53" cy="22" r="3.5" fill="#fff" />
+          <path d="M26 38 Q22 30 25 23 Q29 24 30 32 Q30 37 28 38 Z" fill="#fff" />
+          <path d="M38 38 Q42 30 39 23 Q35 24 34 32 Q34 37 36 38 Z" fill="#fff" />
+          <ellipse cx="32" cy="44" rx="10" ry="8" fill="#fff" />
+          <circle cx="28" cy="43" r="1.4" fill="#1d4ed8" />
+          <circle cx="36" cy="43" r="1.4" fill="#1d4ed8" />
+          <ellipse cx="32" cy="46" rx="1.2" ry="0.8" fill="#fb7185" />
+        </svg>
         <span>Work-Pet Orbit</span>
         <div style={{ flex: 1 }} />
         <button
