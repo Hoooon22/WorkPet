@@ -4,9 +4,8 @@ import { invoke } from '@tauri-apps/api/core'
 import { emit } from '@tauri-apps/api/event'
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow'
 import type { GachaResult, PetId } from '../../shared/types'
-import SvgPet from '../components/SvgPet'
 import LottiePet from '../components/LottiePet'
-import { isLottiePetId, isSvgPetId } from '../../shared/petCatalog'
+import { isLottiePetId } from '../../shared/petCatalog'
 
 type Grade = 'COMMON' | 'RARE' | 'EPIC' | 'LEGENDARY'
 type Phase = 'intro' | 'rolling' | 'revealed'
@@ -297,8 +296,6 @@ function RevealCard({
       >
         {isLottiePetId(result.petId) ? (
           <LottiePet kind={result.petId} size={140} direction="left" />
-        ) : isSvgPetId(result.petId) ? (
-          <SvgPet kind={result.petId} size={140} action="idle" mood="happy" direction="left" />
         ) : null}
       </div>
       <h2 style={{ fontSize: 28, fontWeight: 800, color: '#111827', margin: 0 }}>

@@ -53,16 +53,7 @@ export type LottiePetId =
   | 'panda'
   | 'lion'
   | 'dragon'
-export type SvgPetId =
-  | 'fox'
-  | 'frog'
-  | 'penguin'
-  | 'turtle'
-  | 'owl'
-  | 'octopus'
-  | 'chick'
-  | 'bear'
-export type PetId = LottiePetId | SvgPetId
+export type PetId = LottiePetId
 
 export type PetSize = 'small' | 'medium' | 'large'
 

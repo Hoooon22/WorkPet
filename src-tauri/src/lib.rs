@@ -781,19 +781,15 @@ fn position_bottom_right(window: &tauri::WebviewWindow) {
 // ─────────────────────────────────────────────────────────────────────────
 
 const PET_OPTIONS: &[(&str, &str)] = &[
-    // ("pet:fox", "🦊 여우"),
-    // ("pet:frog", "🐸 개구리"),
-    // ("pet:penguin", "🐧 펭귄"),
-    // ("pet:turtle", "🐢 거북이"),
-    // ("pet:owl", "🦉 부엉이"),
-    // ("pet:octopus", "🐙 문어"),
-    // ("pet:chick", "🐥 병아리"),
-    // ("pet:bear", "🐻 곰"),
-    // ("pet:cat", "🐱 고양이"),
+    ("pet:cat", "🐱 고양이"),
     ("pet:rabbit", "🐰 토끼"),
     ("pet:hedgehog", "🦔 고슴도치"),
     ("pet:raccoon", "🦝 너구리"),
     ("pet:unicorn", "🦄 유니콘"),
+    ("pet:dog", "🐕 강아지"),
+    ("pet:panda", "🐼 판다"),
+    ("pet:lion", "🦁 사자"),
+    ("pet:dragon", "🐉 드래곤"),
 ];
 
 fn refresh_tray_menu(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {

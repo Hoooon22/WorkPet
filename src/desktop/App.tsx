@@ -5,7 +5,6 @@ import { currentMonitor, primaryMonitor } from '@tauri-apps/api/window'
 import { PhysicalPosition } from '@tauri-apps/api/dpi'
 import { invoke } from '@tauri-apps/api/core'
 import { listen, emit } from '@tauri-apps/api/event'
-import SvgPet from './components/SvgPet'
 import LottiePet from './components/LottiePet'
 import PetSpeechBubble from './components/PetSpeechBubble'
 import type { PetAction } from './components/petActions'
@@ -19,7 +18,7 @@ import type {
   FocusTimerState,
 } from '../shared/types'
 import { EMPTY_BRIEFING, IDLE_FOCUS_TIMER } from '../shared/types'
-import { isLottiePetId, isSvgPetId, isPetId } from '../shared/petCatalog'
+import { isLottiePetId, isPetId } from '../shared/petCatalog'
 import { getValue, setValue, subscribeStorage, KEYS } from '../shared/storage'
 import {
   signIn,
@@ -166,7 +165,7 @@ export default function App() {
   const [direction, setDirection] = useState<Direction>('left')
   const [wanderAction, setWanderAction] = useState<WanderPhase>('idle')
   const [oneShotAction, setOneShotAction] = useState<PetAction | null>(null)
-  const [petKind, setPetKind] = useState<PetId>('fox')
+  const [petKind, setPetKind] = useState<PetId>('cat')
   const [petSize, setPetSize] = useState<PetSize>('medium')
   const [wanderPaused, setWanderPaused] = useState(false)
 
@@ -184,7 +183,7 @@ export default function App() {
   const wanderPausedRef = useRef(false)
   const panelOpenRef = useRef(false)
   const petStateRef = useRef<PetState>('idle')
-  const petKindRef = useRef<PetId>('fox')
+  const petKindRef = useRef<PetId>('cat')
   const currentLottieFrameRef = useRef(0)
   const oneShotTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -951,14 +950,6 @@ export default function App() {
               onFrame={(f) => {
                 currentLottieFrameRef.current = f
               }}
-            />
-          ) : isSvgPetId(petKind) ? (
-            <SvgPet
-              kind={petKind}
-              size={spriteSize}
-              action={effectiveAction}
-              mood={petState === 'alert' ? 'happy' : isSleepy ? 'sleepy' : 'happy'}
-              direction={direction}
             />
           ) : null}
         </div>
