@@ -948,6 +948,7 @@ export default function App() {
               size={spriteSize}
               direction={direction}
               walking={effectiveAction === 'walk'}
+              paused={wanderPaused}
               onFrame={(f) => {
                 currentLottieFrameRef.current = f
               }}

@@ -1,5 +1,7 @@
+import { useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import Lottie from 'lottie-react'
+import type { LottieRefCurrentProps } from 'lottie-react'
 import type { BMEnterFrameEvent } from 'lottie-web'
 import type { LottiePetId } from '../../shared/types'
 
@@ -61,6 +63,7 @@ interface LottiePetProps {
   direction?: 'left' | 'right'
   size?: number
   walking?: boolean
+  paused?: boolean
   onFrame?: (frame: number) => void
 }
 
@@ -69,23 +72,43 @@ export default function LottiePet({
   direction = 'left',
   size = 120,
   walking = false,
+  paused = false,
   onFrame,
 }: LottiePetProps) {
+  const lottieRef = useRef<LottieRefCurrentProps>(null)
   const animationData =
     (walking ? WALKING_LOTTIE_MAP[kind] : undefined) ?? LOTTIE_MAP[kind]
+
+  useEffect(() => {
+    const r = lottieRef.current
+    if (!r) return
+    if (paused) r.pause()
+    else r.play()
+  }, [paused, animationData])
+
   return (
     <motion.div
-      animate={{ rotateY: direction === 'right' ? 180 : 0 }}
-      transition={{ duration: 0.22 }}
+      animate={{
+        rotateY: direction === 'right' ? 180 : 0,
+        scaleY: paused ? [1, 0.98, 1] : 1,
+      }}
+      transition={{
+        rotateY: { duration: 0.22 },
+        scaleY: paused
+          ? { duration: 2.6, repeat: Infinity, ease: 'easeInOut' }
+          : { duration: 0.2 },
+      }}
       style={{
         width: size,
         height: size,
         filter: 'drop-shadow(0 6px 6px rgba(0,0,0,0.22))',
         userSelect: 'none',
         WebkitUserSelect: 'none',
+        transformOrigin: 'bottom center',
       }}
     >
       <Lottie
+        lottieRef={lottieRef}
         animationData={animationData}
         loop
         autoplay
