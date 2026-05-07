@@ -19,6 +19,7 @@ function formatTime(rule: ReminderRule): string {
 export default function ReminderPanel() {
   const [rules, setRules] = useState<ReminderRule[]>([])
   const [adding, setAdding] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [draftLabel, setDraftLabel] = useState('')
   const [draftTime, setDraftTime] = useState('12:30')
   const [draftMessage, setDraftMessage] = useState('')
@@ -52,9 +53,10 @@ export default function ReminderPanel() {
     setDraftMessage('')
     setDraftWeekdays(false)
     setAdding(false)
+    setEditingId(null)
   }
 
-  const addRule = async () => {
+  const submitDraft = async () => {
     const label = draftLabel.trim()
     if (!label) return
     const [hStr, mStr] = draftTime.split(':')
@@ -62,17 +64,39 @@ export default function ReminderPanel() {
     const minute = Number(mStr)
     if (!Number.isFinite(hour) || !Number.isFinite(minute)) return
     if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return
-    const rule: ReminderRule = {
-      id: makeReminderId(),
-      label,
-      hour,
-      minute,
-      enabled: true,
-      weekdaysOnly: draftWeekdays,
-      message: draftMessage.trim() || undefined,
+
+    const message = draftMessage.trim() || undefined
+
+    if (editingId) {
+      await persist(
+        rules.map((r) =>
+          r.id === editingId
+            ? { ...r, label, hour, minute, weekdaysOnly: draftWeekdays, message }
+            : r,
+        ),
+      )
+    } else {
+      const rule: ReminderRule = {
+        id: makeReminderId(),
+        label,
+        hour,
+        minute,
+        enabled: true,
+        weekdaysOnly: draftWeekdays,
+        message,
+      }
+      await persist([...rules, rule])
     }
-    await persist([...rules, rule])
     resetDraft()
+  }
+
+  const startEdit = (rule: ReminderRule) => {
+    setEditingId(rule.id)
+    setDraftLabel(rule.label)
+    setDraftTime(`${pad2(rule.hour)}:${pad2(rule.minute)}`)
+    setDraftMessage(rule.message ?? '')
+    setDraftWeekdays(rule.weekdaysOnly)
+    setAdding(true)
   }
 
   const toggleEnabled = async (id: string) => {
@@ -80,8 +104,11 @@ export default function ReminderPanel() {
   }
 
   const removeRule = async (id: string) => {
+    if (editingId === id) resetDraft()
     await persist(rules.filter((r) => r.id !== id))
   }
+
+  const submitDisabled = !draftLabel.trim()
 
   return (
     <div
@@ -103,135 +130,157 @@ export default function ReminderPanel() {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         <AnimatePresence initial={false}>
-          {rules.map((rule) => (
-            <motion.div
-              key={rule.id}
-              initial={{ opacity: 0, y: -4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -4 }}
-              transition={{ duration: 0.15 }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                background: '#fff',
-                border: `1px solid ${COLOR_BORDER}`,
-                borderRadius: 8,
-                padding: '8px 10px',
-                opacity: rule.enabled ? 1 : 0.55,
-              }}
-            >
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div
+          {rules.map((rule) => {
+            const isEditing = editingId === rule.id
+            return (
+              <motion.div
+                key={rule.id}
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.15 }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  background: isEditing ? COLOR_BG : '#fff',
+                  border: `1px solid ${isEditing ? COLOR_FG : COLOR_BORDER}`,
+                  borderRadius: 8,
+                  padding: '8px 10px',
+                  opacity: rule.enabled ? 1 : 0.55,
+                }}
+              >
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'baseline',
+                      gap: 6,
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 700,
+                        color: COLOR_FG,
+                        fontVariantNumeric: 'tabular-nums',
+                      }}
+                    >
+                      {formatTime(rule)}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: '#1f2937',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {rule.label}
+                    </span>
+                    {rule.weekdaysOnly && (
+                      <span
+                        style={{
+                          fontSize: 9,
+                          fontWeight: 700,
+                          color: '#9a3412',
+                          background: COLOR_BG,
+                          border: `1px solid ${COLOR_BORDER}`,
+                          borderRadius: 4,
+                          padding: '1px 5px',
+                        }}
+                      >
+                        평일
+                      </span>
+                    )}
+                  </div>
+                  {rule.message && (
+                    <div
+                      style={{
+                        fontSize: 10,
+                        color: '#6b7280',
+                        marginTop: 2,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {rule.message}
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={() => toggleEnabled(rule.id)}
+                  aria-label={rule.enabled ? '비활성화' : '활성화'}
                   style={{
-                    display: 'flex',
-                    alignItems: 'baseline',
-                    gap: 6,
-                    flexWrap: 'wrap',
+                    all: 'unset',
+                    cursor: 'pointer',
+                    width: 32,
+                    height: 18,
+                    borderRadius: 9,
+                    background: rule.enabled ? COLOR_FG : '#d1d5db',
+                    position: 'relative',
+                    transition: 'background 0.15s',
+                    flexShrink: 0,
                   }}
                 >
                   <span
                     style={{
-                      fontSize: 13,
-                      fontWeight: 700,
-                      color: COLOR_FG,
-                      fontVariantNumeric: 'tabular-nums',
+                      position: 'absolute',
+                      top: 2,
+                      left: rule.enabled ? 16 : 2,
+                      width: 14,
+                      height: 14,
+                      borderRadius: '50%',
+                      background: '#fff',
+                      transition: 'left 0.15s',
                     }}
-                  >
-                    {formatTime(rule)}
-                  </span>
-                  <span
-                    style={{
-                      fontSize: 12,
-                      fontWeight: 600,
-                      color: '#1f2937',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {rule.label}
-                  </span>
-                  {rule.weekdaysOnly && (
-                    <span
-                      style={{
-                        fontSize: 9,
-                        fontWeight: 700,
-                        color: '#9a3412',
-                        background: COLOR_BG,
-                        border: `1px solid ${COLOR_BORDER}`,
-                        borderRadius: 4,
-                        padding: '1px 5px',
-                      }}
-                    >
-                      평일
-                    </span>
-                  )}
-                </div>
-                {rule.message && (
-                  <div
-                    style={{
-                      fontSize: 10,
-                      color: '#6b7280',
-                      marginTop: 2,
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {rule.message}
-                  </div>
-                )}
-              </div>
-              <button
-                onClick={() => toggleEnabled(rule.id)}
-                aria-label={rule.enabled ? '비활성화' : '활성화'}
-                style={{
-                  all: 'unset',
-                  cursor: 'pointer',
-                  width: 32,
-                  height: 18,
-                  borderRadius: 9,
-                  background: rule.enabled ? COLOR_FG : '#d1d5db',
-                  position: 'relative',
-                  transition: 'background 0.15s',
-                  flexShrink: 0,
-                }}
-              >
-                <span
+                  />
+                </button>
+                <button
+                  onClick={() => (isEditing ? resetDraft() : startEdit(rule))}
+                  aria-label={isEditing ? '편집 취소' : '편집'}
                   style={{
-                    position: 'absolute',
-                    top: 2,
-                    left: rule.enabled ? 16 : 2,
-                    width: 14,
-                    height: 14,
-                    borderRadius: '50%',
-                    background: '#fff',
-                    transition: 'left 0.15s',
+                    all: 'unset',
+                    cursor: 'pointer',
+                    width: 22,
+                    height: 22,
+                    borderRadius: 6,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: isEditing ? COLOR_FG : '#9ca3af',
+                    fontSize: 12,
+                    flexShrink: 0,
                   }}
-                />
-              </button>
-              <button
-                onClick={() => removeRule(rule.id)}
-                aria-label="삭제"
-                style={{
-                  all: 'unset',
-                  cursor: 'pointer',
-                  width: 22,
-                  height: 22,
-                  borderRadius: 6,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#9ca3af',
-                  fontSize: 14,
-                  flexShrink: 0,
-                }}
-              >
-                ✕
-              </button>
-            </motion.div>
-          ))}
+                >
+                  ✏️
+                </button>
+                <button
+                  onClick={() => removeRule(rule.id)}
+                  aria-label="삭제"
+                  style={{
+                    all: 'unset',
+                    cursor: 'pointer',
+                    width: 22,
+                    height: 22,
+                    borderRadius: 6,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#9ca3af',
+                    fontSize: 14,
+                    flexShrink: 0,
+                  }}
+                >
+                  ✕
+                </button>
+              </motion.div>
+            )
+          })}
         </AnimatePresence>
       </div>
 
@@ -247,12 +296,23 @@ export default function ReminderPanel() {
             gap: 7,
           }}
         >
+          <div
+            style={{
+              fontSize: 10,
+              fontWeight: 700,
+              color: COLOR_FG,
+              textTransform: 'uppercase',
+              letterSpacing: 0.4,
+            }}
+          >
+            {editingId ? '✏️ 알림 수정' : '＋ 새 알림'}
+          </div>
           <div style={{ display: 'flex', gap: 6 }}>
             <input
               autoFocus
               value={draftLabel}
               onChange={(e) => setDraftLabel(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && addRule()}
+              onKeyDown={(e) => e.key === 'Enter' && submitDraft()}
               placeholder="이름 (예: 점심시간)"
               style={{
                 flex: 1,
@@ -283,7 +343,7 @@ export default function ReminderPanel() {
           <input
             value={draftMessage}
             onChange={(e) => setDraftMessage(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && addRule()}
+            onKeyDown={(e) => e.key === 'Enter' && submitDraft()}
             placeholder="펫이 띄울 말 (선택)"
             style={{
               border: `1px solid ${COLOR_BORDER}`,
@@ -314,16 +374,16 @@ export default function ReminderPanel() {
           </label>
           <div style={{ display: 'flex', gap: 6 }}>
             <motion.button
-              whileHover={{ scale: draftLabel.trim() ? 1.02 : 1 }}
-              whileTap={{ scale: draftLabel.trim() ? 0.97 : 1 }}
-              onClick={addRule}
-              disabled={!draftLabel.trim()}
+              whileHover={{ scale: submitDisabled ? 1 : 1.02 }}
+              whileTap={{ scale: submitDisabled ? 1 : 0.97 }}
+              onClick={submitDraft}
+              disabled={submitDisabled}
               style={{
                 all: 'unset',
                 flex: 1,
-                cursor: draftLabel.trim() ? 'pointer' : 'default',
-                background: draftLabel.trim() ? COLOR_FG : '#fed7aa',
-                color: draftLabel.trim() ? '#fff' : '#fdba74',
+                cursor: submitDisabled ? 'default' : 'pointer',
+                background: submitDisabled ? '#fed7aa' : COLOR_FG,
+                color: submitDisabled ? '#fdba74' : '#fff',
                 fontSize: 12,
                 fontWeight: 700,
                 padding: '7px 0',
@@ -331,7 +391,7 @@ export default function ReminderPanel() {
                 textAlign: 'center',
               }}
             >
-              추가
+              {editingId ? '저장' : '추가'}
             </motion.button>
             <button
               onClick={resetDraft}
