@@ -42,6 +42,12 @@ const WALKING_LOTTIE_MAP: Partial<Record<LottiePetId, object>> = (() => {
   return map
 })()
 
+// Frame to freeze on when paused — should map to a standing/rest pose for
+// each pet so the pet doesn't appear caught mid-stride. Defaults to 0.
+const LOTTIE_REST_FRAME: Partial<Record<LottiePetId, number>> = {
+  raccoon: 84,
+}
+
 export const LOTTIE_PET_IDS: LottiePetId[] = [
   'cat',
   'rabbit',
@@ -82,9 +88,9 @@ export default function LottiePet({
   useEffect(() => {
     const r = lottieRef.current
     if (!r) return
-    if (paused) r.pause()
+    if (paused) r.goToAndStop(LOTTIE_REST_FRAME[kind] ?? 0, true)
     else r.play()
-  }, [paused, animationData])
+  }, [paused, animationData, kind])
 
   return (
     <motion.div
