@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { invoke } from '@tauri-apps/api/core'
 import { emit } from '@tauri-apps/api/event'
+import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow'
 import type { GachaResult, PetId } from '../../shared/types'
 import SvgPet from '../components/SvgPet'
 import LottiePet from '../components/LottiePet'
@@ -11,17 +12,8 @@ type Grade = 'COMMON' | 'RARE' | 'EPIC' | 'LEGENDARY'
 type Phase = 'intro' | 'rolling' | 'revealed'
 
 const ROSTER: { petId: PetId; name: string; grade: Grade }[] = [
-  { petId: 'chick', name: '병아리', grade: 'COMMON' },
-  { petId: 'frog', name: '개구리', grade: 'COMMON' },
-  { petId: 'turtle', name: '거북이', grade: 'COMMON' },
-  { petId: 'bear', name: '곰', grade: 'COMMON' },
-  { petId: 'fox', name: '여우', grade: 'COMMON' },
-  { petId: 'penguin', name: '펭귄', grade: 'COMMON' },
-  { petId: 'owl', name: '부엉이', grade: 'RARE' },
-  { petId: 'octopus', name: '문어', grade: 'RARE' },
-  { petId: 'cat', name: '고양이', grade: 'RARE' },
-  { petId: 'rabbit', name: '토끼', grade: 'RARE' },
-  { petId: 'hedgehog', name: '고슴도치', grade: 'EPIC' },
+  { petId: 'rabbit', name: '토끼', grade: 'COMMON' },
+  { petId: 'hedgehog', name: '고슴도치', grade: 'RARE' },
   { petId: 'raccoon', name: '너구리', grade: 'EPIC' },
   { petId: 'unicorn', name: '유니콘', grade: 'LEGENDARY' },
 ]
@@ -80,6 +72,8 @@ function rollPet(): GachaResult {
   }
 }
 
+const appWindow = getCurrentWebviewWindow()
+
 export default function Gacha() {
   const [phase, setPhase] = useState<Phase>('intro')
   const [result, setResult] = useState<GachaResult | null>(null)
@@ -87,6 +81,22 @@ export default function Gacha() {
   useEffect(() => {
     const t = setTimeout(() => setPhase('intro'), 0)
     return () => clearTimeout(t)
+  }, [])
+
+  useEffect(() => {
+    let unlisten: (() => void) | undefined
+    let hasBeenFocused = false
+    ;(async () => {
+      unlisten = await appWindow.onFocusChanged(async ({ payload: focused }) => {
+        if (focused) {
+          hasBeenFocused = true
+          return
+        }
+        if (!hasBeenFocused) return
+        await invoke('close_gacha').catch(() => {})
+      })
+    })()
+    return () => unlisten?.()
   }, [])
 
   function startRoll() {
@@ -160,7 +170,7 @@ export default function Gacha() {
               🎰 이번 주 파트너 뽑기!
             </h1>
             <p style={{ fontSize: 16, color: '#cbd5e1', marginBottom: 32 }}>
-              13종 펫 중 한 명이 당신의 파트너가 돼요.
+              4종 펫 중 한 마리가 당신의 파트너가 돼요.
             </p>
             <motion.button
               whileHover={{ scale: 1.05 }}
