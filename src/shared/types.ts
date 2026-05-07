@@ -85,3 +85,13 @@ export const EMPTY_BRIEFING: BriefingPayload = {
   emails: [],
   timestamp: 0,
 }
+
+export interface ReminderRule {
+  id: string
+  label: string
+  hour: number
+  minute: number
+  enabled: boolean
+  weekdaysOnly: boolean
+  message?: string
+}

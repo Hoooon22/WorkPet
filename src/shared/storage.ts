@@ -58,4 +58,6 @@ export const KEYS = {
   NOTIFIED_EVENT_ALERTS: 'notified:event_alerts',
   NOTIFIED_NEW_EVENT_IDS: 'notified:new_event_ids',
   CALENDAR_LAST_CHECKED: 'calendar:last_checked',
+  REMINDER_RULES: 'reminders:rules',
+  REMINDER_LAST_FIRED: 'reminders:last_fired',
 } as const

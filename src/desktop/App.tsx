@@ -458,6 +458,15 @@ export default function App() {
           setPanelOpen(false)
         }),
       )
+      register(
+        await listen<{ id: string; label: string; message: string }>(
+          'orbit:reminder-fire',
+          (e) => {
+            if (cancelled) return
+            showBubble(e.payload.message, 6000)
+          },
+        ),
+      )
     })()
     return () => {
       cancelled = true
