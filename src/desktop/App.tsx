@@ -362,13 +362,6 @@ export default function App() {
         }),
       )
       register(
-        await listen('orbit:wander-pause', () => {
-          if (cancelled) return
-          setWanderPaused(true)
-          void setValue(KEYS.WANDER_PAUSED, true)
-        }),
-      )
-      register(
         await listen<BriefingPayload>('orbit:briefing-alert', (e) => {
           setBriefing(e.payload)
           setPetState('alert')

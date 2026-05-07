@@ -762,20 +762,6 @@ fn position_default(window: &tauri::WebviewWindow) {
     let _ = window.set_position(PhysicalPosition::new(x, y));
 }
 
-fn position_bottom_right(window: &tauri::WebviewWindow) {
-    let Ok(Some(monitor)) = window.primary_monitor() else {
-        return;
-    };
-    let Ok(win_size) = window.outer_size() else {
-        return;
-    };
-    let screen = monitor.size();
-    let margin_right: i32 = 24;
-    let x = screen.width as i32 - win_size.width as i32 - margin_right;
-    let y = ground_y(screen.height, win_size.height);
-    let _ = window.set_position(PhysicalPosition::new(x, y));
-}
-
 // ─────────────────────────────────────────────────────────────────────────
 // Tray menu
 // ─────────────────────────────────────────────────────────────────────────
@@ -945,10 +931,15 @@ fn build_tray(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
                     }
                 }
                 "pos:bottom-right" => {
-                    if let Some(w) = app.get_webview_window("pet") {
-                        position_bottom_right(&w);
-                    }
-                    let _ = app.emit("orbit:wander-pause", ());
+                    // Route through the same frontend handler the panel's
+                    // "🏠 원위치" button uses, so position + pause stay in
+                    // one code path. Rust-side teleport conflicts with the
+                    // frontend's onMoved debounce and can leave the pet at
+                    // the wrong spot.
+                    let _ = app.emit(
+                        "orbit:panel-action",
+                        serde_json::json!({ "type": "return-home" }),
+                    );
                 }
                 _ => {}
             }
