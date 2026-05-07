@@ -900,14 +900,12 @@ fn build_tray_menu(app: &AppHandle) -> Result<tauri::menu::Menu<tauri::Wry>, Box
 fn build_tray(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let menu = build_tray_menu(app.handle())?;
 
-    let icon = app
-        .default_window_icon()
-        .ok_or("missing default window icon")?
-        .clone();
+    let icon = tauri::image::Image::from_bytes(include_bytes!("../icons/tray-icon@2x.png"))?;
 
     TrayIconBuilder::with_id("orbit-tray")
         .tooltip("Work-Pet: Orbit")
         .icon(icon)
+        .icon_as_template(true)
         .menu(&menu)
         .show_menu_on_left_click(true)
         .on_menu_event(move |app, event| {
