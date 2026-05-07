@@ -675,6 +675,7 @@ pub fn run() {
                 let _ = app.set_activation_policy(tauri::ActivationPolicy::Accessory);
             }
             if let Some(window) = app.get_webview_window("pet") {
+                let _ = window.set_visible_on_all_workspaces(true);
                 position_default(&window);
             }
             build_tray(app)?;
