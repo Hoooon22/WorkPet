@@ -46,6 +46,32 @@ fn get_cursor_position(app: tauri::AppHandle) -> Option<(f64, f64)> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+// Frontmost app detection (for Today's Work Report).
+// ─────────────────────────────────────────────────────────────────────────
+
+#[cfg(target_os = "macos")]
+fn frontmost_app_name_macos() -> Option<String> {
+    use objc2_app_kit::NSWorkspace;
+
+    let workspace = NSWorkspace::sharedWorkspace();
+    let app = workspace.frontmostApplication()?;
+    let name = app.localizedName()?;
+    Some(name.to_string())
+}
+
+#[tauri::command]
+fn get_frontmost_app() -> Option<String> {
+    #[cfg(target_os = "macos")]
+    {
+        frontmost_app_name_macos()
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        None
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // OAuth (Google) — Loopback + PKCE
 // ─────────────────────────────────────────────────────────────────────────
 
@@ -669,6 +695,7 @@ pub fn run() {
         .manage(TrayState::default())
         .invoke_handler(tauri::generate_handler![
             get_cursor_position,
+            get_frontmost_app,
             oauth_google_signin,
             oauth_google_refresh,
             oauth_google_revoke,

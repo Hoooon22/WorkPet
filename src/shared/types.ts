@@ -115,3 +115,9 @@ export interface TodoEntry {
   done: boolean
   createdAt: number
 }
+
+export interface UsageRecord {
+  date: string
+  apps: Record<string, number>
+  lastSampledAt: number
+}

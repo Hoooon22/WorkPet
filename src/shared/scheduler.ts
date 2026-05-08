@@ -12,6 +12,7 @@ import { getValue, setValue, KEYS } from './storage'
 import { tickReminders } from './reminders'
 import { tickBreakReminder } from './breakReminders'
 import { tickClipboard } from './clipboardHistory'
+import { startUsageTracker, maybeFireEveningSummary } from './usageTracker'
 import type { BriefingPayload } from './types'
 
 const ALARM_PERIOD_MS = 60_000
@@ -53,6 +54,7 @@ function scheduleNextReminderTick(): void {
   setTimeout(() => {
     void tickReminders().catch(() => {})
     void tickBreakReminder().catch(() => {})
+    void maybeFireEveningSummary().catch(() => {})
     scheduleNextReminderTick()
   }, delay)
 }
@@ -72,13 +74,16 @@ export function startBriefingScheduler(): void {
     // so background/throttled webview state cannot delay firing.
     void tickReminders().catch(() => {})
     void tickBreakReminder().catch(() => {})
+    void maybeFireEveningSummary().catch(() => {})
     scheduleNextReminderTick()
     void listen('orbit:reminder-tick', () => {
       void tickReminders().catch(() => {})
       void tickBreakReminder().catch(() => {})
+      void maybeFireEveningSummary().catch(() => {})
     })
     void tickClipboard().catch(() => {})
     setInterval(() => void tickClipboard().catch(() => {}), CLIPBOARD_PERIOD_MS)
+    startUsageTracker()
   })()
 }
 

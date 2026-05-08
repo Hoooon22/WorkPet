@@ -64,4 +64,7 @@ export const KEYS = {
   BREAK_REMINDER_LAST_FIRED: 'break:last_fired',
   CLIPBOARD_HISTORY: 'clipboard:history',
   TODO_LIST: 'todo:list',
+  USAGE_TODAY: 'usage:today',
+  USAGE_HISTORY: 'usage:history',
+  USAGE_SUMMARY_LAST_FIRED: 'usage:summary_last_fired',
 } as const
