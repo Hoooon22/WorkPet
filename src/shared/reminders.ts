@@ -29,6 +29,7 @@ function shouldFire(rule: ReminderRule, now: Date): boolean {
 }
 
 export async function tickReminders(): Promise<void> {
+  if (await getValue<boolean>(KEYS.PET_DISMISSED)) return
   const rules = (await getValue<ReminderRule[]>(KEYS.REMINDER_RULES)) ?? []
   if (rules.length === 0) return
 
