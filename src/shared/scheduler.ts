@@ -1,4 +1,4 @@
-import { emit } from '@tauri-apps/api/event'
+import { emit, listen } from '@tauri-apps/api/event'
 import {
   fetchBriefingData,
   fetchFullBriefing,
@@ -14,7 +14,6 @@ import { tickClipboard } from './clipboardHistory'
 import type { BriefingPayload } from './types'
 
 const ALARM_PERIOD_MS = 60_000
-const REMINDER_PERIOD_MS = 30_000
 const CLIPBOARD_PERIOD_MS = 1_500
 
 let started = false
@@ -46,6 +45,16 @@ async function tick(): Promise<void> {
   }
 }
 
+function scheduleNextReminderTick(): void {
+  const now = Date.now()
+  // Aim ~50ms past the next minute boundary so we are safely inside the new minute.
+  const delay = 60_000 - (now % 60_000) + 50
+  setTimeout(() => {
+    void tickReminders().catch(() => {})
+    scheduleNextReminderTick()
+  }, delay)
+}
+
 export function startBriefingScheduler(): void {
   if (started) return
   started = true
@@ -57,8 +66,13 @@ export function startBriefingScheduler(): void {
       void tick()
       setInterval(() => void tick(), ALARM_PERIOD_MS)
     }, 5_000)
+    // Reminders: align to minute boundary; also accept Rust-emitted ticks
+    // so background/throttled webview state cannot delay firing.
     void tickReminders().catch(() => {})
-    setInterval(() => void tickReminders().catch(() => {}), REMINDER_PERIOD_MS)
+    scheduleNextReminderTick()
+    void listen('orbit:reminder-tick', () => {
+      void tickReminders().catch(() => {})
+    })
     void tickClipboard().catch(() => {})
     setInterval(() => void tickClipboard().catch(() => {}), CLIPBOARD_PERIOD_MS)
   })()

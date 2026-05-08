@@ -12,15 +12,20 @@ function fireKey(rule: ReminderRule, now: Date): string {
   return `${y}-${m}-${d} ${hh}:${mm}`
 }
 
+// Catch-up window: if a tick is delayed (webview throttled, brief sleep, etc.),
+// still fire the reminder when the scheduled time has just passed today.
+const CATCHUP_WINDOW_MS = 5 * 60 * 1000
+
 function shouldFire(rule: ReminderRule, now: Date): boolean {
   if (!rule.enabled) return false
   if (rule.weekdaysOnly) {
     const day = now.getDay()
     if (day === 0 || day === 6) return false
   }
-  if (now.getHours() !== rule.hour) return false
-  if (now.getMinutes() !== rule.minute) return false
-  return true
+  const scheduled = new Date(now)
+  scheduled.setHours(rule.hour, rule.minute, 0, 0)
+  const diff = now.getTime() - scheduled.getTime()
+  return diff >= 0 && diff <= CATCHUP_WINDOW_MS
 }
 
 export async function tickReminders(): Promise<void> {

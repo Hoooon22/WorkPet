@@ -5,7 +5,7 @@ use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::io::Cursor;
 use std::sync::Mutex;
-use std::time::Duration;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tauri::{
     menu::{CheckMenuItemBuilder, MenuBuilder, MenuItemBuilder, SubmenuBuilder},
     tray::TrayIconBuilder,
@@ -638,6 +638,24 @@ async fn capture_region(x: i32, y: i32, w: u32, h: u32) -> Result<String, String
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+// Reminder ticker — emits `orbit:reminder-tick` aligned to each minute boundary.
+// Runs on a dedicated OS thread so webview throttling cannot delay reminders.
+// ─────────────────────────────────────────────────────────────────────────
+
+fn spawn_reminder_ticker(app: &AppHandle) {
+    let app = app.clone();
+    std::thread::spawn(move || loop {
+        let now_ms = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_millis() as u64)
+            .unwrap_or(0);
+        let to_next = 60_000 - (now_ms % 60_000);
+        std::thread::sleep(Duration::from_millis(to_next + 50));
+        let _ = app.emit("orbit:reminder-tick", ());
+    });
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // App entry
 // ─────────────────────────────────────────────────────────────────────────
 
@@ -679,6 +697,7 @@ pub fn run() {
                 position_default(&window);
             }
             build_tray(app)?;
+            spawn_reminder_ticker(&app.handle());
             Ok(())
         })
         .run(tauri::generate_context!())
