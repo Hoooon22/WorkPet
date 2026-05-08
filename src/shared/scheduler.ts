@@ -10,6 +10,7 @@ import {
 import { isSignedIn } from './auth'
 import { getValue, setValue, KEYS } from './storage'
 import { tickReminders } from './reminders'
+import { tickBreakReminder } from './breakReminders'
 import { tickClipboard } from './clipboardHistory'
 import type { BriefingPayload } from './types'
 
@@ -51,6 +52,7 @@ function scheduleNextReminderTick(): void {
   const delay = 60_000 - (now % 60_000) + 50
   setTimeout(() => {
     void tickReminders().catch(() => {})
+    void tickBreakReminder().catch(() => {})
     scheduleNextReminderTick()
   }, delay)
 }
@@ -69,9 +71,11 @@ export function startBriefingScheduler(): void {
     // Reminders: align to minute boundary; also accept Rust-emitted ticks
     // so background/throttled webview state cannot delay firing.
     void tickReminders().catch(() => {})
+    void tickBreakReminder().catch(() => {})
     scheduleNextReminderTick()
     void listen('orbit:reminder-tick', () => {
       void tickReminders().catch(() => {})
+      void tickBreakReminder().catch(() => {})
     })
     void tickClipboard().catch(() => {})
     setInterval(() => void tickClipboard().catch(() => {}), CLIPBOARD_PERIOD_MS)

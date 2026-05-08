@@ -96,6 +96,13 @@ export interface ReminderRule {
   message?: string
 }
 
+export interface BreakReminderSettings {
+  enabled: boolean
+  intervalMin: number
+  message?: string
+  weekdaysOnly: boolean
+}
+
 export interface ClipboardEntry {
   id: string
   text: string

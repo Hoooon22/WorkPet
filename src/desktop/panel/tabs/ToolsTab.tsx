@@ -11,6 +11,7 @@ import ColorPickerPanel from '../panels/ColorPickerPanel'
 import WordCountPanel from '../panels/WordCountPanel'
 import ScreenshotPanel from '../panels/ScreenshotPanel'
 import ReminderPanel from '../panels/ReminderPanel'
+import BreakReminderPanel from '../panels/BreakReminderPanel'
 import ClipboardHistoryPanel from '../panels/ClipboardHistoryPanel'
 
 interface Props {
@@ -21,6 +22,7 @@ interface Props {
 type ToolId =
   | 'focus'
   | 'reminder'
+  | 'break'
   | 'translate'
   | 'summarize'
   | 'ask'
@@ -43,6 +45,7 @@ interface ToolMeta {
 const TOOLS: ToolMeta[] = [
   { id: 'focus',      label: '집중 타이머', emoji: '⏱️', bg: '#fef2f2', border: '#fecaca', fg: '#dc2626' },
   { id: 'reminder',   label: '정기 알림',   emoji: '⏰', bg: '#fff7ed', border: '#fed7aa', fg: '#c2410c' },
+  { id: 'break',      label: '휴식 알림',   emoji: '👀', bg: '#ecfdf5', border: '#a7f3d0', fg: '#047857' },
   { id: 'translate',  label: '번역',       emoji: '🌐', bg: '#eff6ff', border: '#bfdbfe', fg: '#1d4ed8' },
   { id: 'summarize',  label: '요약',       emoji: '📝', bg: '#fffbeb', border: '#fde68a', fg: '#d97706' },
   { id: 'ask',        label: '질문',       emoji: '🤔', bg: '#f5f3ff', border: '#ddd6fe', fg: '#7c3aed' },
@@ -225,6 +228,7 @@ export default function ToolsTab({ focusTimer, action }: Props) {
                 />
               )}
               {active === 'reminder' && <ReminderPanel />}
+              {active === 'break' && <BreakReminderPanel />}
               {active === 'translate' && <TranslatePanel />}
               {active === 'summarize' && <SummarizePanel />}
               {active === 'ask' && <GeminiAskPanel />}
