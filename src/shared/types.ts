@@ -101,3 +101,10 @@ export interface ClipboardEntry {
   text: string
   createdAt: number
 }
+
+export interface TodoEntry {
+  id: string
+  text: string
+  done: boolean
+  createdAt: number
+}

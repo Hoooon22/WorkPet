@@ -61,4 +61,5 @@ export const KEYS = {
   REMINDER_RULES: 'reminders:rules',
   REMINDER_LAST_FIRED: 'reminders:last_fired',
   CLIPBOARD_HISTORY: 'clipboard:history',
+  TODO_LIST: 'todo:list',
 } as const
