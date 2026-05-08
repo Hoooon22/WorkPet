@@ -1,15 +1,20 @@
 import { motion } from 'framer-motion'
+import { forwardRef } from 'react'
 
 interface SpeechBubbleProps {
   message: string
   onDismiss?: () => void
 }
 
-export default function PetSpeechBubble({ message, onDismiss }: SpeechBubbleProps) {
+const PetSpeechBubble = forwardRef<HTMLDivElement, SpeechBubbleProps>(function PetSpeechBubble(
+  { message, onDismiss },
+  ref,
+) {
   const dismissible = !!onDismiss
 
   return (
     <motion.div
+      ref={ref}
       initial={{ opacity: 0, scale: 0, y: 12 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0, y: 8, transition: { duration: 0.18 } }}
@@ -62,4 +67,6 @@ export default function PetSpeechBubble({ message, onDismiss }: SpeechBubbleProp
       </p>
     </motion.div>
   )
-}
+})
+
+export default PetSpeechBubble

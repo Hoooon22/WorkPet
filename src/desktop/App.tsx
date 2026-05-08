@@ -201,6 +201,9 @@ export default function App() {
   const dragStartedRef = useRef(false)
   const lastPanelClosedAtRef = useRef(0)
 
+  const petHitRef = useRef<HTMLDivElement | null>(null)
+  const bubbleRef = useRef<HTMLDivElement | null>(null)
+
   useEffect(() => {
     wanderActionRef.current = wanderAction
   }, [wanderAction])
@@ -502,6 +505,68 @@ export default function App() {
     return () => {
       cancelled = true
       offs.forEach((off) => off())
+    }
+  }, [])
+
+  // ── Click pass-through: ignore cursor events outside pet/bubble bounds ──
+  // The pet window is larger than the visible sprite, and a transparent Tauri
+  // window still captures mouse events at the OS level. Poll the cursor and
+  // toggle setIgnoreCursorEvents so clicks pass through dead space to apps
+  // behind the window.
+  useEffect(() => {
+    let cancelled = false
+    let inFlight = false
+    let currentlyIgnoring: boolean | null = null
+    const dpr = window.devicePixelRatio || 1
+
+    const setIgnore = async (ignore: boolean) => {
+      if (currentlyIgnoring === ignore) return
+      try {
+        await appWindow.setIgnoreCursorEvents(ignore)
+        currentlyIgnoring = ignore
+      } catch (e) {
+        console.error('[orbit] setIgnoreCursorEvents failed', e)
+      }
+    }
+
+    const tick = async () => {
+      if (cancelled || inFlight) return
+      inFlight = true
+      try {
+        const cursor = await invoke<CursorTuple>('get_cursor_position')
+        if (!cursor) return
+        const winRelX = (cursor[0] - posCache.x) / dpr
+        const winRelY = (cursor[1] - posCache.y) / dpr
+
+        const hitRect = petHitRef.current?.getBoundingClientRect()
+        const inPet =
+          !!hitRect &&
+          winRelX >= hitRect.left &&
+          winRelX < hitRect.right &&
+          winRelY >= hitRect.top &&
+          winRelY < hitRect.bottom
+
+        let inBubble = false
+        if (!inPet && bubbleRef.current) {
+          const r = bubbleRef.current.getBoundingClientRect()
+          inBubble =
+            winRelX >= r.left && winRelX < r.right && winRelY >= r.top && winRelY < r.bottom
+        }
+
+        await setIgnore(!(inPet || inBubble))
+      } catch {
+        /* noop */
+      } finally {
+        inFlight = false
+      }
+    }
+
+    void setIgnore(true)
+    const id = setInterval(tick, 40)
+    return () => {
+      cancelled = true
+      clearInterval(id)
+      void appWindow.setIgnoreCursorEvents(false).catch(() => {})
     }
   }, [])
 
@@ -934,6 +999,7 @@ export default function App() {
           {visibleBubble && (
             <PetSpeechBubble
               key={visibleBubble}
+              ref={bubbleRef}
               message={visibleBubble}
               onDismiss={
                 stickyBubble && visibleBubble === stickyBubble
@@ -947,6 +1013,7 @@ export default function App() {
 
       {showPet && (
         <div
+          ref={petHitRef}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
