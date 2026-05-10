@@ -1,8 +1,8 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Capabilities for pet, panel, gacha, screenshot, color-picker windows",
-  "windows": ["pet", "panel", "gacha", "screenshot", "color-picker"],
+  "description": "Capabilities for pet, panel, gacha, screenshot, color-picker, team_room windows",
+  "windows": ["pet", "panel", "gacha", "screenshot", "color-picker", "team_room"],
   "permissions": [
     "core:default",
     "core:window:default",

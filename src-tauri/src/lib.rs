@@ -129,6 +129,7 @@ struct OauthResult {
     refresh_token: Option<String>,
     expires_at_ms: i64,
     email: Option<String>,
+    id_token: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -136,6 +137,7 @@ struct GoogleTokenResponse {
     access_token: String,
     refresh_token: Option<String>,
     expires_in: i64,
+    id_token: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -263,6 +265,7 @@ async fn oauth_google_signin(
         refresh_token: token.refresh_token,
         expires_at_ms,
         email,
+        id_token: token.id_token,
     })
 }
 
@@ -288,6 +291,7 @@ async fn oauth_google_refresh(
         refresh_token: Some(refresh_token),
         expires_at_ms,
         email: None,
+        id_token: token.id_token,
     })
 }
 
@@ -501,6 +505,35 @@ async fn close_gacha(app: AppHandle) -> Result<(), String> {
     if let Some(w) = app.get_webview_window("gacha") {
         let _ = w.close();
     }
+    Ok(())
+}
+
+const TEAM_ROOM_WIDTH: u32 = 900;
+const TEAM_ROOM_HEIGHT: u32 = 560;
+
+#[tauri::command]
+async fn open_team_room(app: AppHandle) -> Result<(), String> {
+    if let Some(w) = app.get_webview_window("team_room") {
+        let _ = w.show();
+        let _ = w.set_focus();
+        return Ok(());
+    }
+    let win = WebviewWindowBuilder::new(
+        &app,
+        "team_room",
+        WebviewUrl::App("team_room.html".into()),
+    )
+    .title("팀 펫 룸")
+    .inner_size(TEAM_ROOM_WIDTH as f64, TEAM_ROOM_HEIGHT as f64)
+    .min_inner_size(560.0, 360.0)
+    .decorations(true)
+    .transparent(false)
+    .always_on_top(false)
+    .resizable(true)
+    .visible(true)
+    .build()
+    .map_err(|e| format!("team_room build: {e}"))?;
+    let _ = win.set_focus();
     Ok(())
 }
 
@@ -753,6 +786,7 @@ pub fn run() {
             panel_is_open,
             open_gacha,
             close_gacha,
+            open_team_room,
             open_screenshot_overlay,
             close_screenshot_overlay,
             capture_region,

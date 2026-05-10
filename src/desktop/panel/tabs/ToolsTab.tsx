@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { invoke } from '@tauri-apps/api/core'
 import type { FocusTimerState } from '../../../shared/types'
 import FocusTimerPanel from '../panels/FocusTimerPanel'
 import TranslatePanel from '../panels/TranslatePanel'
@@ -34,6 +35,7 @@ type ToolId =
   | 'wordcount'
   | 'screenshot'
   | 'usage'
+  | 'teamroom'
 
 interface ToolMeta {
   id: ToolId
@@ -42,6 +44,7 @@ interface ToolMeta {
   bg: string
   border: string
   fg: string
+  kind?: 'window'
 }
 
 const TOOLS: ToolMeta[] = [
@@ -58,6 +61,7 @@ const TOOLS: ToolMeta[] = [
   { id: 'wordcount',  label: '글자수',     emoji: '🔢', bg: '#f3f4f6', border: '#d1d5db', fg: '#4b5563' },
   { id: 'screenshot', label: '영역 캡처',   emoji: '📸', bg: '#ecfeff', border: '#a5f3fc', fg: '#0891b2' },
   { id: 'usage',      label: '작업 리포트', emoji: '📊', bg: '#eef2ff', border: '#c7d2fe', fg: '#4338ca' },
+  { id: 'teamroom',   label: '팀 펫 룸',   emoji: '🏠', bg: '#f5f3ff', border: '#ddd6fe', fg: '#7c3aed', kind: 'window' },
 ]
 
 export default function ToolsTab({ focusTimer, action }: Props) {
@@ -66,6 +70,13 @@ export default function ToolsTab({ focusTimer, action }: Props) {
   const activeTool = active ? TOOLS.find((t) => t.id === active) ?? null : null
 
   const handleSelect = (t: ToolMeta) => {
+    if (t.kind === 'window') {
+      void invoke(`open_${t.id === 'teamroom' ? 'team_room' : t.id}`).catch((err) => {
+        console.warn('[orbit] open window failed', err)
+      })
+      setActive(null)
+      return
+    }
     setActive(active === t.id ? null : t.id)
   }
 

@@ -12,6 +12,7 @@ interface OauthResult {
   refresh_token: string | null
   expires_at_ms: number
   email: string | null
+  id_token: string | null
 }
 
 const REFRESH_BUFFER_MS = 60_000
@@ -26,6 +27,7 @@ export async function signIn(): Promise<{ email: string | null }> {
   await setValue(KEYS.AUTH_EXPIRES, result.expires_at_ms)
   if (result.refresh_token) await setValue(KEYS.AUTH_REFRESH, result.refresh_token)
   if (result.email) await setValue(KEYS.AUTH_EMAIL, result.email)
+  if (result.id_token) await setValue(KEYS.AUTH_ID_TOKEN, result.id_token)
   await invoke('set_auth_state', { signedIn: true, email: result.email })
   await emit('orbit:auth-changed', { signedIn: true, email: result.email })
   return { email: result.email }
@@ -44,6 +46,7 @@ export async function signOut(): Promise<void> {
   await deleteValue(KEYS.AUTH_REFRESH)
   await deleteValue(KEYS.AUTH_EXPIRES)
   await deleteValue(KEYS.AUTH_EMAIL)
+  await deleteValue(KEYS.AUTH_ID_TOKEN)
   await invoke('set_auth_state', { signedIn: false, email: null })
   await emit('orbit:auth-changed', { signedIn: false, email: null })
 }
@@ -67,6 +70,7 @@ export async function refreshAccessToken(): Promise<string | null> {
     })
     await setValue(KEYS.AUTH_TOKEN, result.access_token)
     await setValue(KEYS.AUTH_EXPIRES, result.expires_at_ms)
+    if (result.id_token) await setValue(KEYS.AUTH_ID_TOKEN, result.id_token)
     return result.access_token
   } catch (err) {
     console.warn('[orbit] refresh failed, signing out', err)

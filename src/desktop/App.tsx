@@ -842,6 +842,11 @@ export default function App() {
     }
   }, [petState, panelOpen, briefing])
 
+  // ── Focus phase mirror to storage (for team room window) ──
+  useEffect(() => {
+    void setValue(KEYS.FOCUS_TIMER_PHASE, focusTimer.phase)
+  }, [focusTimer.phase])
+
   // ── Focus timer tick ──
   useEffect(() => {
     if (timerIntervalRef.current) clearInterval(timerIntervalRef.current)

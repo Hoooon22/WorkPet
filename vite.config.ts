@@ -31,6 +31,7 @@ export default defineConfig({
         panel: resolve(__dirname, 'panel.html'),
         gacha: resolve(__dirname, 'gacha.html'),
         screenshot: resolve(__dirname, 'screenshot.html'),
+        team_room: resolve(__dirname, 'team_room.html'),
       },
     },
   },
