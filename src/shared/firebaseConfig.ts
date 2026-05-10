@@ -7,6 +7,9 @@ export const FIREBASE_CONFIG = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID ?? '',
 }
 
+export const FIRESTORE_DATABASE_ID =
+  import.meta.env.VITE_FIREBASE_DATABASE_ID ?? '(default)'
+
 export function isFirebaseConfigured(): boolean {
   return Boolean(FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.projectId && FIREBASE_CONFIG.appId)
 }

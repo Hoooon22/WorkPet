@@ -7,7 +7,11 @@ import {
   User,
 } from 'firebase/auth'
 import { Firestore, getFirestore } from 'firebase/firestore'
-import { FIREBASE_CONFIG, isFirebaseConfigured } from './firebaseConfig'
+import {
+  FIREBASE_CONFIG,
+  FIRESTORE_DATABASE_ID,
+  isFirebaseConfigured,
+} from './firebaseConfig'
 import { getValue, KEYS } from './storage'
 import { signIn } from './auth'
 
@@ -27,7 +31,10 @@ export function firebaseAuth(): Auth {
 }
 
 export function firebaseDb(): Firestore {
-  return getFirestore(getFirebaseApp())
+  const app = getFirebaseApp()
+  return FIRESTORE_DATABASE_ID === '(default)'
+    ? getFirestore(app)
+    : getFirestore(app, FIRESTORE_DATABASE_ID)
 }
 
 export async function ensureFirebaseAuth(): Promise<User> {
