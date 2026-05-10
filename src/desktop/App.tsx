@@ -1126,12 +1126,33 @@ export default function App() {
   // can override and open the question input instead. The trade-off is a small
   // latency on every panel open/close, which is invisible in practice.
   const CLICK_DELAY_MS = 230
+  const WAKE_ANIMATION_MS = 1400
+
+  const wakePet = () => {
+    setIsSleepy(false)
+    setIsAway(false)
+    awayStartedAtRef.current = null
+    lastUserActionAtRef.current = Date.now()
+    if (sleepyTimerRef.current) clearTimeout(sleepyTimerRef.current)
+    sleepyTimerRef.current = setTimeout(() => setIsSleepy(true), SLEEPY_TIMEOUT_MS)
+    setOneShotAction('stretch')
+    if (oneShotTimerRef.current) clearTimeout(oneShotTimerRef.current)
+    oneShotTimerRef.current = setTimeout(() => setOneShotAction(null), WAKE_ANIMATION_MS)
+  }
 
   const handleMouseUp = () => {
     const wasClick = mouseDownAtRef.current && !dragStartedRef.current
     mouseDownAtRef.current = null
     if (!wasClick) return
     if (askingRef.current || askLoading) return
+
+    // If the pet is in a passive state (sleeping/away/wander-paused), the click
+    // is consumed as a wake-up gesture instead of opening the panel.
+    if (isSleepy || isAway || wanderPaused) {
+      wakePet()
+      return
+    }
+
     const justClosedByBlur = Date.now() - lastPanelClosedAtRef.current < 250
     if (clickTimerRef.current) clearTimeout(clickTimerRef.current)
     clickTimerRef.current = setTimeout(() => {
@@ -1268,6 +1289,11 @@ export default function App() {
                 key={visibleBubble}
                 ref={bubbleRef}
                 message={visibleBubble}
+                actionable={
+                  !!stickyBubble &&
+                  visibleBubble === stickyBubble &&
+                  stickyActionRef.current !== null
+                }
                 onDismiss={
                   stickyBubble && visibleBubble === stickyBubble
                     ? () => {

@@ -4,13 +4,17 @@ import { forwardRef } from 'react'
 interface SpeechBubbleProps {
   message: string
   onDismiss?: () => void
+  // When true, the bubble is a call-to-action (entire bubble is the target).
+  // The little ✕ glyph is hidden so it doesn't compete with the bubble itself.
+  actionable?: boolean
 }
 
 const PetSpeechBubble = forwardRef<HTMLDivElement, SpeechBubbleProps>(function PetSpeechBubble(
-  { message, onDismiss },
+  { message, onDismiss, actionable },
   ref,
 ) {
   const dismissible = !!onDismiss
+  const showDismissGlyph = dismissible && !actionable
 
   return (
     <motion.div
@@ -38,7 +42,7 @@ const PetSpeechBubble = forwardRef<HTMLDivElement, SpeechBubbleProps>(function P
         cursor: dismissible ? 'pointer' : 'default',
       }}
     >
-      {dismissible && (
+      {showDismissGlyph && (
         <span
           aria-hidden="true"
           style={{
