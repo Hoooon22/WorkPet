@@ -795,7 +795,8 @@ pub fn run() {
             set_auth_state,
             set_dismissed_state,
             set_wander_paused_state,
-            set_pet_size_state
+            set_pet_size_state,
+            get_walk_area
         ])
         .setup(|app| {
             #[cfg(target_os = "macos")]
@@ -874,9 +875,67 @@ fn set_pet_size_state(
 // Window position helpers (existing)
 // ─────────────────────────────────────────────────────────────────────────
 
-fn ground_y(screen_height: u32, win_height: u32) -> i32 {
-    let margin_bottom: i32 = 100;
-    screen_height as i32 - win_height as i32 - margin_bottom
+// Walk area = the rectangle (in physical pixels) where the pet may stand.
+// macOS: full screen — pet sits at the absolute screen bottom.
+// Windows: monitor work area — excludes the taskbar so pet sits just above it.
+#[derive(Serialize)]
+struct WalkArea {
+    x: i32,
+    y: i32,
+    width: i32,
+    height: i32,
+}
+
+fn walk_area_for(window: &tauri::WebviewWindow) -> Option<WalkArea> {
+    let monitor = window
+        .current_monitor()
+        .ok()
+        .flatten()
+        .or_else(|| window.primary_monitor().ok().flatten())?;
+    let pos = monitor.position();
+    let size = monitor.size();
+    let full = WalkArea {
+        x: pos.x,
+        y: pos.y,
+        width: size.width as i32,
+        height: size.height as i32,
+    };
+
+    #[cfg(target_os = "windows")]
+    unsafe {
+        use windows_sys::Win32::Foundation::POINT;
+        use windows_sys::Win32::Graphics::Gdi::{
+            GetMonitorInfoW, MonitorFromPoint, MONITORINFO, MONITOR_DEFAULTTONEAREST,
+        };
+        let center = POINT {
+            x: pos.x + (size.width as i32) / 2,
+            y: pos.y + (size.height as i32) / 2,
+        };
+        let hmon = MonitorFromPoint(center, MONITOR_DEFAULTTONEAREST);
+        let mut info: MONITORINFO = std::mem::zeroed();
+        info.cbSize = std::mem::size_of::<MONITORINFO>() as u32;
+        if GetMonitorInfoW(hmon, &mut info) != 0 {
+            let r = info.rcWork;
+            return Some(WalkArea {
+                x: r.left,
+                y: r.top,
+                width: r.right - r.left,
+                height: r.bottom - r.top,
+            });
+        }
+    }
+
+    Some(full)
+}
+
+#[tauri::command]
+fn get_walk_area(window: tauri::WebviewWindow) -> Result<WalkArea, String> {
+    walk_area_for(&window).ok_or_else(|| "no monitor".to_string())
+}
+
+fn ground_y_from_walk_area(window: &tauri::WebviewWindow, win_height: u32) -> Option<i32> {
+    let area = walk_area_for(window)?;
+    Some(area.y + area.height - win_height as i32)
 }
 
 fn position_default(window: &tauri::WebviewWindow) {
@@ -888,7 +947,8 @@ fn position_default(window: &tauri::WebviewWindow) {
     };
     let screen = monitor.size();
     let x = (screen.width as i32 - win_size.width as i32) / 2;
-    let y = ground_y(screen.height, win_size.height);
+    let y = ground_y_from_walk_area(window, win_size.height)
+        .unwrap_or_else(|| screen.height as i32 - win_size.height as i32);
     let _ = window.set_position(PhysicalPosition::new(x, y));
 }
 

@@ -39,8 +39,6 @@ const WANDER_SPEED_PX_PER_SEC = 80
 const USER_ACTION_COOLDOWN_MS = 1500
 const PROGRAMMATIC_MOVE_FLAG_MS = 120
 const DRAG_END_DEBOUNCE_MS = 300
-const GROUND_MARGIN_PX = 80
-const COMFORTABLE_INNER_MARGIN_PX = 200
 const DRAG_MOVE_THRESHOLD_PX = 4
 const ONESHOT_ACTION_DURATION_MS = 1200
 const FALL_ANIMATION_MS = 500
@@ -146,17 +144,43 @@ const LOTTIE_REST_RANGES: Partial<Record<LottiePetId, [number, number]>> = {
 const randomBetween = (min: number, max: number) => Math.random() * (max - min) + min
 const pickRandom = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)]
 
-async function loadScreenBounds(): Promise<ScreenBounds | null> {
+interface WalkArea {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+async function loadScreenBounds(spriteSize: number): Promise<ScreenBounds | null> {
   let monitor = await currentMonitor()
   if (!monitor) monitor = await primaryMonitor()
   if (!monitor) return null
   const winSize = await appWindow.outerSize()
   sizeCache.w = winSize.width
   sizeCache.h = winSize.height
+
+  // Walk area: full monitor on macOS (very bottom), work area on Windows (above taskbar).
+  let walk: WalkArea
+  try {
+    walk = await invoke<WalkArea>('get_walk_area')
+  } catch {
+    walk = {
+      x: monitor.position.x,
+      y: monitor.position.y,
+      width: monitor.size.width,
+      height: monitor.size.height,
+    }
+  }
+
+  // Sprite is centered in a wider transparent window. Extend X bounds by the
+  // empty padding so the visible sprite can reach the screen edge.
+  const spritePhysical = Math.round(spriteSize * monitor.scaleFactor)
+  const sideMargin = Math.max(0, Math.floor((winSize.width - spritePhysical) / 2))
+
   return {
-    minX: monitor.position.x,
-    maxX: monitor.position.x + monitor.size.width - winSize.width,
-    groundY: monitor.position.y + monitor.size.height - winSize.height - GROUND_MARGIN_PX,
+    minX: walk.x - sideMargin,
+    maxX: walk.x + walk.width - winSize.width + sideMargin,
+    groundY: walk.y + walk.height - winSize.height,
   }
 }
 
@@ -279,6 +303,24 @@ export default function App() {
   useEffect(() => {
     void invoke('set_pet_size_state', { size: petSize }).catch(() => {})
   }, [petSize])
+  // Sprite-to-window padding shrinks with larger sprites, so X bounds depend on petSize.
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const newBounds = await loadScreenBounds(PET_SIZE_DIMS[petSize].sprite)
+      if (cancelled || !newBounds) return
+      boundsRef.current = newBounds
+      // If shrinking margins put the pet past the new bound, snap it back.
+      const pos = await appWindow.outerPosition()
+      const x = Math.max(newBounds.minX, Math.min(newBounds.maxX, pos.x))
+      if (x !== pos.x || pos.y !== newBounds.groundY) {
+        await setWindowPosition(x, newBounds.groundY)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [petSize])
   useEffect(() => {
     isAwayRef.current = isAway
   }, [isAway])
@@ -292,16 +334,18 @@ export default function App() {
     let cancelled = false
 
     ;(async () => {
-      const bounds = await loadScreenBounds()
+      // Load saved pet size first so initial bounds use the correct sprite-to-window padding.
+      const savedSize = await getValue<string>(KEYS.PET_SIZE)
+      const initialPetSize: PetSize = isPetSize(savedSize) ? savedSize : 'medium'
+      if (isPetSize(savedSize)) setPetSize(savedSize)
+
+      const bounds = await loadScreenBounds(PET_SIZE_DIMS[initialPetSize].sprite)
       if (cancelled) return
       boundsRef.current = bounds
       log('bounds loaded', bounds)
 
       const savedKind = await getValue<string>(KEYS.PET_KIND)
       if (isPetId(savedKind)) setPetKind(savedKind)
-
-      const savedSize = await getValue<string>(KEYS.PET_SIZE)
-      if (isPetSize(savedSize)) setPetSize(savedSize)
 
       const savedPaused = await getValue<boolean>(KEYS.WANDER_PAUSED)
       if (typeof savedPaused === 'boolean') setWanderPaused(savedPaused)
@@ -318,12 +362,7 @@ export default function App() {
 
       const savedPos = await getValue<SavedPosition>(KEYS.WINDOW_POSITION)
       if (savedPos && Number.isFinite(savedPos.x) && Number.isFinite(savedPos.y) && bounds) {
-        const innerMin = bounds.minX + COMFORTABLE_INNER_MARGIN_PX
-        const innerMax = bounds.maxX - COMFORTABLE_INNER_MARGIN_PX
-        const x =
-          innerMin <= innerMax
-            ? Math.max(innerMin, Math.min(innerMax, savedPos.x))
-            : Math.max(bounds.minX, Math.min(bounds.maxX, savedPos.x))
+        const x = Math.max(bounds.minX, Math.min(bounds.maxX, savedPos.x))
         await setWindowPosition(x, bounds.groundY)
       } else if (bounds) {
         const pos = await appWindow.outerPosition()
