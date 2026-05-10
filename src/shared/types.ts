@@ -53,7 +53,8 @@ export type LottiePetId =
   | 'panda'
   | 'lion'
   | 'dragon'
-export type PetId = LottiePetId
+export type SvgPetId = 'pico'
+export type PetId = LottiePetId | SvgPetId
 
 export type PetSize = 'small' | 'medium' | 'large'
 

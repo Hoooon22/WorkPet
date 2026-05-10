@@ -1,0 +1,137 @@
+/* PICO — robot character animations
+ * Sourced from Work-Pet Orbit Design System (PICO Character Sheet).
+ */
+
+.pico { display: block; }
+.pico .body-wrap { transform-box: fill-box; transform-origin: center bottom; }
+.pico .head { transform-box: fill-box; transform-origin: 120px 145px; }
+.pico .arm-left { transform-box: fill-box; transform-origin: 78px 168px; }
+.pico .arm-right { transform-box: fill-box; transform-origin: 162px 168px; }
+.pico .leg-left { transform-box: fill-box; transform-origin: 102px 234px; }
+.pico .leg-right { transform-box: fill-box; transform-origin: 138px 234px; }
+.pico .antenna { transform-box: fill-box; transform-origin: 120px 48px; }
+.pico .antenna-bulb { transform-box: fill-box; transform-origin: center; }
+.pico .ground-shadow { fill: rgba(0, 0, 0, 0.45); }
+
+.pico .eye, .pico .eye-line, .pico .eye-arc, .pico .eye-big,
+.pico .mouth, .pico .mouth-arc, .pico .mouth-open, .pico .mouth-o,
+.pico .qmark, .pico .qmark-dot, .pico .excl, .pico .heart-eye {
+  fill: #7dd3fc; stroke: none;
+}
+.pico .eye-arc, .pico .mouth-arc, .pico .qmark {
+  fill: none; stroke: #7dd3fc; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round;
+}
+.pico .blush { fill: #f472b6; opacity: 0.85; }
+.pico .tear { fill: #93c5fd; }
+.pico .zzz { fill: #cbd5e1; font-family: inherit; font-weight: 800; font-size: 14px; }
+.pico .brow { fill: #ef4444; }
+.pico .heart-eye { fill: #f472b6; }
+.pico .core-pulse { transform-origin: 120px 194px; transform-box: fill-box; }
+.pico .antenna-glow { transform-origin: center; transform-box: fill-box; }
+
+.pico .arm-left { transform: rotate(-6deg); }
+.pico .arm-right { transform: rotate(6deg); }
+
+/* === idle === */
+.pico[data-action="idle"] .body-wrap { animation: pico-bob 3.2s ease-in-out infinite; }
+.pico[data-action="idle"] .antenna-bulb { animation: pico-bulb-soft 2.4s ease-in-out infinite; }
+.pico[data-action="idle"] .antenna-glow { animation: pico-glow-soft 2.4s ease-in-out infinite; }
+.pico[data-action="idle"] .eye { animation: pico-blink 4.5s ease-in-out infinite; transform-origin: center; transform-box: fill-box; }
+.pico[data-action="idle"] .core-pulse { animation: pico-core-pulse 2.6s ease-in-out infinite; }
+
+@keyframes pico-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+@keyframes pico-bulb-soft {
+  0%, 100% { fill: #3b82f6; }
+  50% { fill: #93c5fd; }
+}
+@keyframes pico-glow-soft {
+  0%, 100% { opacity: 0.18; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(1.4); }
+}
+@keyframes pico-blink {
+  0%, 90%, 100% { transform: scaleY(1); }
+  93%, 96% { transform: scaleY(0.1); }
+}
+@keyframes pico-core-pulse {
+  0%, 100% { opacity: 0.85; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.6); }
+}
+
+/* === walking === */
+.pico[data-action="walking"] .body-wrap { animation: pico-walk-bob 0.7s ease-in-out infinite; }
+.pico[data-action="walking"] .leg-left { animation: pico-leg-swing 0.7s ease-in-out infinite; }
+.pico[data-action="walking"] .leg-right { animation: pico-leg-swing 0.7s ease-in-out infinite reverse; }
+.pico[data-action="walking"] .arm-left { animation: pico-arm-swing 0.7s ease-in-out infinite reverse; }
+.pico[data-action="walking"] .arm-right { animation: pico-arm-swing 0.7s ease-in-out infinite; }
+.pico[data-action="walking"] .head { animation: pico-head-bob 0.7s ease-in-out infinite; }
+.pico[data-action="walking"] .antenna-bulb { animation: pico-bulb-soft 1.2s ease-in-out infinite; }
+
+@keyframes pico-walk-bob {
+  0%, 100% { transform: translateY(0); }
+  25% { transform: translateY(-4px); }
+  50% { transform: translateY(0); }
+  75% { transform: translateY(-4px); }
+}
+@keyframes pico-leg-swing {
+  0%, 100% { transform: rotate(18deg); }
+  50% { transform: rotate(-18deg); }
+}
+@keyframes pico-arm-swing {
+  0%, 100% { transform: rotate(20deg); }
+  50% { transform: rotate(-20deg); }
+}
+@keyframes pico-head-bob {
+  0%, 100% { transform: rotate(-2deg); }
+  50% { transform: rotate(2deg); }
+}
+
+/* === sleep === */
+.pico[data-action="sleep"] .body-wrap { animation: pico-sleep-breathe 4.2s ease-in-out infinite; }
+.pico[data-action="sleep"] .head { animation: pico-sleep-tilt 4.2s ease-in-out infinite; }
+.pico[data-action="sleep"] .antenna-bulb { animation: pico-bulb-soft 4.2s ease-in-out infinite; }
+.pico[data-action="sleep"] .antenna-glow { opacity: 0.1; }
+.pico[data-action="sleep"] .core-pulse { animation: pico-core-pulse 4.2s ease-in-out infinite; }
+.pico[data-action="sleep"] .zzz-1 { animation: pico-zzz-float 3s ease-in infinite; transform-origin: center; transform-box: fill-box; }
+.pico[data-action="sleep"] .zzz-2 { animation: pico-zzz-float 3s ease-in infinite 1s; transform-origin: center; transform-box: fill-box; }
+.pico[data-action="sleep"] .zzz-3 { animation: pico-zzz-float 3s ease-in infinite 2s; transform-origin: center; transform-box: fill-box; }
+
+@keyframes pico-sleep-breathe {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-1px) scale(1.015); }
+}
+@keyframes pico-sleep-tilt {
+  0%, 100% { transform: rotate(8deg) translate(2px, 2px); }
+  50% { transform: rotate(8deg) translate(2px, 4px); }
+}
+@keyframes pico-zzz-float {
+  0% { transform: translate(0, 0); opacity: 0; }
+  20% { opacity: 1; }
+  100% { transform: translate(8px, -22px); opacity: 0; }
+}
+
+/* === alert === */
+.pico[data-action="alert"] .body-wrap { animation: pico-alert-shake 0.18s ease-in-out infinite; }
+.pico[data-action="alert"] .antenna-bulb { animation: pico-alert-flash 0.4s ease-in-out infinite; }
+.pico[data-action="alert"] .antenna-glow { animation: pico-alert-glow 0.4s ease-in-out infinite; }
+.pico[data-action="alert"] .excl { fill: #fbbf24; animation: pico-excl-flash 0.4s ease-in-out infinite; }
+
+@keyframes pico-alert-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  75% { transform: translateX(2px); }
+}
+@keyframes pico-alert-flash {
+  0%, 49% { fill: #ef4444; }
+  50%, 100% { fill: #fca5a5; }
+}
+@keyframes pico-alert-glow {
+  0%, 49% { fill: #ef4444; opacity: 0.6; transform: scale(1.6); }
+  50%, 100% { fill: #ef4444; opacity: 0.15; transform: scale(1); }
+}
+@keyframes pico-excl-flash {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0.4; }
+}

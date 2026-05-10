@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow'
-import LottiePet from '../components/LottiePet'
+import PetSprite from '../components/PetSprite'
 import { KEYS, subscribeStorage } from '../../shared/storage'
 import { ensureFirebaseAuth } from '../../shared/firebase'
 import {
@@ -351,7 +351,7 @@ function PetSlot({ member, isMe }: { member: TeamMember; isMe: boolean }) {
             : 'none',
         }}
       >
-        <LottiePet
+        <PetSprite
           kind={member.petId}
           size={PET_SIZE}
           walking={member.status === 'walking'}

@@ -5,7 +5,7 @@ import { currentMonitor, primaryMonitor } from '@tauri-apps/api/window'
 import { PhysicalPosition } from '@tauri-apps/api/dpi'
 import { invoke } from '@tauri-apps/api/core'
 import { listen, emit } from '@tauri-apps/api/event'
-import LottiePet from './components/LottiePet'
+import PetSprite from './components/PetSprite'
 import PetSpeechBubble from './components/PetSpeechBubble'
 import type { PetAction } from './components/petActions'
 import type {
@@ -199,7 +199,7 @@ export default function App() {
   const [direction, setDirection] = useState<Direction>('left')
   const [wanderAction, setWanderAction] = useState<WanderPhase>('idle')
   const [oneShotAction, setOneShotAction] = useState<PetAction | null>(null)
-  const [petKind, setPetKind] = useState<PetId>('cat')
+  const [petKind, setPetKind] = useState<PetId>('pico')
   const [petSize, setPetSize] = useState<PetSize>('medium')
   const [wanderPaused, setWanderPaused] = useState(false)
 
@@ -219,7 +219,7 @@ export default function App() {
   const wanderPausedRef = useRef(false)
   const panelOpenRef = useRef(false)
   const petStateRef = useRef<PetState>('idle')
-  const petKindRef = useRef<PetId>('cat')
+  const petKindRef = useRef<PetId>('pico')
   const currentLottieFrameRef = useRef(0)
   const oneShotTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -1127,18 +1127,16 @@ export default function App() {
             pointerEvents: 'auto',
           }}
         >
-          {isLottiePetId(petKind) ? (
-            <LottiePet
-              kind={petKind}
-              size={spriteSize}
-              direction={direction}
-              walking={effectiveAction === 'walk'}
-              paused={wanderPaused}
-              onFrame={(f) => {
-                currentLottieFrameRef.current = f
-              }}
-            />
-          ) : null}
+          <PetSprite
+            kind={petKind}
+            size={spriteSize}
+            direction={direction}
+            walking={effectiveAction === 'walk'}
+            paused={wanderPaused}
+            onFrame={(f) => {
+              currentLottieFrameRef.current = f
+            }}
+          />
         </div>
       )}
     </div>

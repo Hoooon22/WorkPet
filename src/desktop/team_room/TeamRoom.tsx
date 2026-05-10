@@ -15,7 +15,7 @@ export default function TeamRoom() {
   const [mode, setMode] = useState<Mode>('loading')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [roomCode, setRoomCode] = useState<string | null>(null)
-  const [petId, setPetId] = useState<PetId>('cat')
+  const [petId, setPetId] = useState<PetId>('pico')
   const [displayName, setDisplayName] = useState<string | null>(null)
 
   useEffect(() => {
@@ -27,7 +27,7 @@ export default function TeamRoom() {
       try {
         const user = await ensureFirebaseAuth()
         setDisplayName(user.displayName ?? user.email)
-        const savedKind = (await getValue<PetId>(KEYS.PET_KIND)) ?? 'cat'
+        const savedKind = (await getValue<PetId>(KEYS.PET_KIND)) ?? 'pico'
         setPetId(savedKind)
         const savedCode = await getValue<string>(KEYS.TEAM_ROOM_CODE)
         if (savedCode) {
