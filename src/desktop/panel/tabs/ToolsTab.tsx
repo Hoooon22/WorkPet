@@ -107,6 +107,7 @@ export default function ToolsTab({ focusTimer, action }: Props) {
         <div
           style={{
             display: 'flex',
+            flexWrap: 'wrap',
             gap: 6,
             marginBottom: 10,
             paddingBottom: 2,
