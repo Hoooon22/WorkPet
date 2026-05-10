@@ -4,8 +4,8 @@ import { invoke } from '@tauri-apps/api/core'
 import { emit } from '@tauri-apps/api/event'
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow'
 import type { GachaResult, PetId } from '../../shared/types'
-import LottiePet from '../components/LottiePet'
-import { isLottiePetId } from '../../shared/petCatalog'
+import PetSprite from '../components/PetSprite'
+import { isPetId } from '../../shared/petCatalog'
 
 type Grade = 'COMMON' | 'RARE' | 'EPIC' | 'LEGENDARY'
 type Phase = 'intro' | 'rolling' | 'revealed'
@@ -19,6 +19,7 @@ const ROSTER: { petId: PetId; name: string; grade: Grade }[] = [
   { petId: 'lion', name: '사자', grade: 'EPIC' },
   { petId: 'unicorn', name: '유니콘', grade: 'LEGENDARY' },
   { petId: 'dragon', name: '드래곤', grade: 'LEGENDARY' },
+  { petId: 'pico', name: '피코', grade: 'LEGENDARY' },
 ]
 
 const GRADE_WEIGHTS: Record<Grade, number> = {
@@ -294,8 +295,8 @@ function RevealCard({
           background: `radial-gradient(circle, ${theme.glow}30 0%, transparent 70%)`,
         }}
       >
-        {isLottiePetId(result.petId) ? (
-          <LottiePet kind={result.petId} size={140} direction="left" />
+        {isPetId(result.petId) ? (
+          <PetSprite kind={result.petId} size={140} direction="left" />
         ) : null}
       </div>
       <h2 style={{ fontSize: 28, fontWeight: 800, color: '#111827', margin: 0 }}>
