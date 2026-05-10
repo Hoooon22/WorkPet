@@ -65,7 +65,6 @@ const PetQuestionInput = forwardRef<HTMLDivElement, PetQuestionInputProps>(
             background: '#faf5ff',
             outline: 'none',
             resize: 'none',
-            fontFamily: 'sans-serif',
             lineHeight: 1.4,
           }}
         />

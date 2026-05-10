@@ -137,7 +137,6 @@ export default function Screenshot() {
             color: '#fff',
             borderRadius: 8,
             fontSize: 12,
-            fontFamily: 'sans-serif',
             pointerEvents: 'none',
           }}
         >
@@ -190,7 +189,6 @@ export default function Screenshot() {
           color: '#fff',
           borderRadius: 8,
           fontSize: 12,
-          fontFamily: 'sans-serif',
           pointerEvents: 'none',
         }}
       >

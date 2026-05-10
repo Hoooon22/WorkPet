@@ -60,7 +60,6 @@ const PetSpeechBubble = forwardRef<HTMLDivElement, SpeechBubbleProps>(function P
           fontSize: '12px',
           fontWeight: 600,
           lineHeight: 1.4,
-          fontFamily: 'sans-serif',
         }}
       >
         {message}

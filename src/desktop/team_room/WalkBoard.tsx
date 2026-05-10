@@ -209,7 +209,6 @@ export default function WalkBoard({ roomCode, petId, displayName, onLeave }: Wal
           <button
             onClick={handleCopyCode}
             style={{
-              fontFamily: 'ui-monospace, monospace',
               fontSize: 18,
               fontWeight: 700,
               letterSpacing: 4,

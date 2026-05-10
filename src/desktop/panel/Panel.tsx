@@ -37,6 +37,7 @@ export default function Panel() {
   const [email, setEmail] = useState<string | null>(null)
   const [focusTimer, setFocusTimer] = useState<FocusTimerState>(IDLE_FOCUS_TIMER)
   const [detached, setDetached] = useState(false)
+  const [focusGeminiSignal, setFocusGeminiSignal] = useState(0)
 
   // Initial load
   useEffect(() => {
@@ -78,7 +79,12 @@ export default function Panel() {
         if (cancelled) return
         if (val) setBriefing(val)
       })
-      offs.push(off1, off2, off3, off4, off5)
+      const off6 = await listen('orbit:focus-settings-gemini', () => {
+        if (cancelled) return
+        setTab('settings')
+        setFocusGeminiSignal((s) => s + 1)
+      })
+      offs.push(off1, off2, off3, off4, off5, off6)
     })()
     return () => {
       cancelled = true
@@ -181,7 +187,6 @@ export default function Panel() {
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
-        fontFamily: 'sans-serif',
         userSelect: 'none',
         WebkitUserSelect: 'none',
       }}
@@ -278,7 +283,12 @@ export default function Panel() {
         )}
         {tab === 'tools' && <ToolsTab focusTimer={focusTimer} action={action} />}
         {tab === 'settings' && (
-          <SettingsTab signedIn={signedIn} email={email} action={action} />
+          <SettingsTab
+            signedIn={signedIn}
+            email={email}
+            action={action}
+            focusGeminiSignal={focusGeminiSignal}
+          />
         )}
       </div>
     </motion.div>

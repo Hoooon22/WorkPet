@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { getValue, setValue, deleteValue, KEYS } from '../../../shared/storage'
 
@@ -6,12 +6,22 @@ interface Props {
   signedIn: boolean
   email: string | null
   action: (type: string, payload?: unknown) => void
+  focusGeminiSignal?: number
 }
 
-export default function SettingsTab({ signedIn, email, action }: Props) {
+export default function SettingsTab({ signedIn, email, action, focusGeminiSignal }: Props) {
   const [geminiKey, setGeminiKey] = useState('')
   const [geminiExists, setGeminiExists] = useState(false)
   const [geminiSaved, setGeminiSaved] = useState(false)
+  const geminiInputRef = useRef<HTMLInputElement | null>(null)
+
+  useEffect(() => {
+    if (!focusGeminiSignal) return
+    const el = geminiInputRef.current
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    el.focus()
+  }, [focusGeminiSignal])
 
   useEffect(() => {
     ;(async () => {
@@ -158,6 +168,7 @@ export default function SettingsTab({ signedIn, email, action }: Props) {
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
           <input
+            ref={geminiInputRef}
             type="password"
             value={geminiKey}
             onChange={(e) => setGeminiKey(e.target.value)}

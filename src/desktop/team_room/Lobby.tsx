@@ -100,7 +100,6 @@ export default function Lobby({ petId, displayName, onEnter }: LobbyProps) {
               fontSize: 16,
               letterSpacing: 4,
               textAlign: 'center',
-              fontFamily: 'ui-monospace, monospace',
               marginBottom: 8,
               boxSizing: 'border-box',
             }}

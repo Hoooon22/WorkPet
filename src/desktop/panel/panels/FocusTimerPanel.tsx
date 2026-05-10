@@ -129,7 +129,6 @@ export default function FocusTimerPanel({ timer, onStart, onTogglePause, onReset
                     fontSize: remaining >= 3600 ? 11 : 13,
                     fontWeight: 800,
                     color: '#dc2626',
-                    fontFamily: 'monospace',
                   }}
                 >
                   {formatTimerTime(remaining)}

@@ -132,8 +132,6 @@ function Shell({ children }: { children: React.ReactNode }) {
         width: '100vw',
         background: COLOR_BG,
         color: COLOR_FG,
-        fontFamily:
-          '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
         overflow: 'hidden',
       }}
     >

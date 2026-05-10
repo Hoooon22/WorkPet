@@ -134,7 +134,6 @@ export default function Gacha() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        fontFamily: 'sans-serif',
         userSelect: 'none',
         WebkitUserSelect: 'none',
         overflow: 'hidden',

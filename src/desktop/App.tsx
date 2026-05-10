@@ -275,6 +275,7 @@ export default function App() {
   const askInputRef = useRef<HTMLDivElement | null>(null)
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const askingRef = useRef(false)
+  const stickyActionRef = useRef<(() => void) | null>(null)
 
   useEffect(() => {
     wanderActionRef.current = wanderAction
@@ -576,6 +577,7 @@ export default function App() {
           'orbit:reminder-fire',
           (e) => {
             if (cancelled) return
+            stickyActionRef.current = null
             setStickyBubble(e.payload.message)
           },
         ),
@@ -1167,6 +1169,7 @@ export default function App() {
     if (!q || askLoading) return
     setAsking(false)
     setAskLoading(true)
+    stickyActionRef.current = null
     setStickyBubble(null)
     showBubble('🤔 생각 중…', 60_000)
     setOneShotAction('think')
@@ -1176,7 +1179,13 @@ export default function App() {
       const key = await getGeminiKey()
       if (!key) {
         setBubbleMessage(null)
-        setStickyBubble(geminiErrorMessage('NO_API_KEY', 0))
+        setStickyBubble('🔑 Gemini API 키가 필요해요. 클릭하면 설정 화면으로 이동해요.')
+        stickyActionRef.current = () => {
+          void (async () => {
+            await openPanel()
+            await emit('orbit:focus-settings-gemini')
+          })()
+        }
         return
       }
       const answer = await askQuestion(q, key)
@@ -1258,7 +1267,12 @@ export default function App() {
                 message={visibleBubble}
                 onDismiss={
                   stickyBubble && visibleBubble === stickyBubble
-                    ? () => setStickyBubble(null)
+                    ? () => {
+                        const action = stickyActionRef.current
+                        stickyActionRef.current = null
+                        setStickyBubble(null)
+                        if (action) action()
+                      }
                     : undefined
                 }
               />
