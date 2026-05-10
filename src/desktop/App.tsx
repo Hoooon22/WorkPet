@@ -7,7 +7,10 @@ import { invoke } from '@tauri-apps/api/core'
 import { listen, emit } from '@tauri-apps/api/event'
 import PetSprite from './components/PetSprite'
 import PetSpeechBubble from './components/PetSpeechBubble'
+import PetQuestionInput from './components/PetQuestionInput'
 import type { PetAction } from './components/petActions'
+import { askQuestion } from '../shared/api/gemini'
+import { getGeminiKey, geminiErrorMessage } from './panel/panels/geminiHelpers'
 import type {
   BriefingPayload,
   CalendarEvent,
@@ -40,7 +43,6 @@ const USER_ACTION_COOLDOWN_MS = 1500
 const PROGRAMMATIC_MOVE_FLAG_MS = 120
 const DRAG_END_DEBOUNCE_MS = 300
 const DRAG_MOVE_THRESHOLD_PX = 4
-const ONESHOT_ACTION_DURATION_MS = 1200
 const FALL_ANIMATION_MS = 500
 const SLEEPY_TIMEOUT_MS = 120_000
 const GREETING_DURATION_MS = 3000
@@ -112,20 +114,6 @@ type CursorTuple = [number, number] | null
 type Direction = 'left' | 'right'
 type WanderPhase = 'idle' | 'walk'
 
-const ONESHOT_ACTIONS: PetAction[] = [
-  'jump',
-  'love',
-  'wave',
-  'dance',
-  'stretch',
-  'peek',
-  'smile',
-  'cry',
-  'think',
-  'surprise',
-  'angry',
-]
-
 const PET_SIZE_DIMS: Record<PetSize, { sprite: number }> = {
   small: { sprite: 80 },
   medium: { sprite: 120 },
@@ -142,7 +130,6 @@ const LOTTIE_REST_RANGES: Partial<Record<LottiePetId, [number, number]>> = {
 }
 
 const randomBetween = (min: number, max: number) => Math.random() * (max - min) + min
-const pickRandom = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)]
 
 interface WalkArea {
   x: number
@@ -253,6 +240,9 @@ export default function App() {
   const [isSleepy, setIsSleepy] = useState(false)
   const [isAway, setIsAway] = useState(false)
   const [panelOpen, setPanelOpen] = useState(false)
+  const [asking, setAsking] = useState(false)
+  const [questionDraft, setQuestionDraft] = useState('')
+  const [askLoading, setAskLoading] = useState(false)
 
   const wanderActionRef = useRef<WanderPhase>('idle')
   const wanderPausedRef = useRef(false)
@@ -282,6 +272,9 @@ export default function App() {
 
   const petHitRef = useRef<HTMLDivElement | null>(null)
   const bubbleRef = useRef<HTMLDivElement | null>(null)
+  const askInputRef = useRef<HTMLDivElement | null>(null)
+  const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const askingRef = useRef(false)
 
   useEffect(() => {
     wanderActionRef.current = wanderAction
@@ -326,6 +319,15 @@ export default function App() {
   useEffect(() => {
     isAwayRef.current = isAway
   }, [isAway])
+  useEffect(() => {
+    askingRef.current = asking
+  }, [asking])
+  useEffect(() => {
+    if (petState === 'dismissed' || !signedIn) {
+      setAsking(false)
+      setQuestionDraft('')
+    }
+  }, [petState, signedIn])
   useEffect(() => {
     briefingRef.current = briefing
   }, [briefing])
@@ -426,6 +428,7 @@ export default function App() {
       cancelled = true
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
       if (oneShotTimerRef.current) clearTimeout(oneShotTimerRef.current)
+      if (clickTimerRef.current) clearTimeout(clickTimerRef.current)
       unlistenMoved?.()
     }
   }, [])
@@ -671,7 +674,14 @@ export default function App() {
             winRelX >= r.left && winRelX < r.right && winRelY >= r.top && winRelY < r.bottom
         }
 
-        await setIgnore(!(inPet || inBubble))
+        let inAsk = false
+        if (!inPet && !inBubble && askInputRef.current) {
+          const r = askInputRef.current.getBoundingClientRect()
+          inAsk =
+            winRelX >= r.left && winRelX < r.right && winRelY >= r.top && winRelY < r.bottom
+        }
+
+        await setIgnore(!(inPet || inBubble || inAsk))
       } catch {
         /* noop */
       } finally {
@@ -1110,25 +1120,26 @@ export default function App() {
     }
   }
 
-  const triggerClickAction = () => {
-    const action = pickRandom(ONESHOT_ACTIONS)
-    setOneShotAction(action)
-    if (oneShotTimerRef.current) clearTimeout(oneShotTimerRef.current)
-    oneShotTimerRef.current = setTimeout(() => {
-      setOneShotAction(null)
-    }, ONESHOT_ACTION_DURATION_MS)
-  }
+  // Single click toggles the panel; we delay the toggle so a quick second click
+  // can override and open the question input instead. The trade-off is a small
+  // latency on every panel open/close, which is invisible in practice.
+  const CLICK_DELAY_MS = 230
 
   const handleMouseUp = () => {
     const wasClick = mouseDownAtRef.current && !dragStartedRef.current
     mouseDownAtRef.current = null
     if (!wasClick) return
+    if (askingRef.current || askLoading) return
     const justClosedByBlur = Date.now() - lastPanelClosedAtRef.current < 250
-    if (panelOpen || justClosedByBlur) {
-      void closePanel()
-    } else {
-      void openPanel()
-    }
+    if (clickTimerRef.current) clearTimeout(clickTimerRef.current)
+    clickTimerRef.current = setTimeout(() => {
+      clickTimerRef.current = null
+      if (panelOpen || justClosedByBlur) {
+        void closePanel()
+      } else {
+        void openPanel()
+      }
+    }, CLICK_DELAY_MS)
   }
 
   const handleMouseLeave = () => {
@@ -1136,7 +1147,50 @@ export default function App() {
   }
 
   const handleDoubleClick = () => {
-    triggerClickAction()
+    if (clickTimerRef.current) {
+      clearTimeout(clickTimerRef.current)
+      clickTimerRef.current = null
+    }
+    if (askLoading) return
+    if (panelOpen) void closePanel()
+    setQuestionDraft('')
+    setAsking(true)
+  }
+
+  const cancelAsk = () => {
+    setAsking(false)
+    setQuestionDraft('')
+  }
+
+  const submitAsk = async () => {
+    const q = questionDraft.trim()
+    if (!q || askLoading) return
+    setAsking(false)
+    setAskLoading(true)
+    setStickyBubble(null)
+    showBubble('🤔 생각 중…', 60_000)
+    setOneShotAction('think')
+    if (oneShotTimerRef.current) clearTimeout(oneShotTimerRef.current)
+
+    try {
+      const key = await getGeminiKey()
+      if (!key) {
+        setBubbleMessage(null)
+        setStickyBubble(geminiErrorMessage('NO_API_KEY', 0))
+        return
+      }
+      const answer = await askQuestion(q, key)
+      setBubbleMessage(null)
+      setStickyBubble(answer.trim() || '음… 답을 찾지 못했어요.')
+      setQuestionDraft('')
+    } catch (err) {
+      const code = err instanceof Error ? err.message : String(err)
+      setBubbleMessage(null)
+      setStickyBubble(geminiErrorMessage(code, 0))
+    } finally {
+      setAskLoading(false)
+      setOneShotAction(null)
+    }
   }
 
   const effectiveAction: PetAction =
@@ -1183,21 +1237,32 @@ export default function App() {
           alignItems: 'flex-end',
           justifyContent: 'center',
           paddingBottom: 4,
-          pointerEvents: stickyBubble ? 'auto' : 'none',
+          pointerEvents: stickyBubble || (asking && showPet) ? 'auto' : 'none',
         }}
       >
         <AnimatePresence>
-          {visibleBubble && (
-            <PetSpeechBubble
-              key={visibleBubble}
-              ref={bubbleRef}
-              message={visibleBubble}
-              onDismiss={
-                stickyBubble && visibleBubble === stickyBubble
-                  ? () => setStickyBubble(null)
-                  : undefined
-              }
+          {asking && showPet ? (
+            <PetQuestionInput
+              key="ask-input"
+              ref={askInputRef}
+              value={questionDraft}
+              onChange={setQuestionDraft}
+              onAsk={() => void submitAsk()}
+              onCancel={cancelAsk}
             />
+          ) : (
+            visibleBubble && (
+              <PetSpeechBubble
+                key={visibleBubble}
+                ref={bubbleRef}
+                message={visibleBubble}
+                onDismiss={
+                  stickyBubble && visibleBubble === stickyBubble
+                    ? () => setStickyBubble(null)
+                    : undefined
+                }
+              />
+            )
           )}
         </AnimatePresence>
       </div>
