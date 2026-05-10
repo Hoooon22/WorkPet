@@ -259,6 +259,7 @@ export default function App() {
   const panelOpenRef = useRef(false)
   const petStateRef = useRef<PetState>('idle')
   const petKindRef = useRef<PetId>('pico')
+  const petSizeRef = useRef<PetSize>('medium')
   const currentLottieFrameRef = useRef(0)
   const oneShotTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -305,6 +306,7 @@ export default function App() {
   }, [petSize])
   // Sprite-to-window padding shrinks with larger sprites, so X bounds depend on petSize.
   useEffect(() => {
+    petSizeRef.current = petSize
     let cancelled = false
     ;(async () => {
       const newBounds = await loadScreenBounds(PET_SIZE_DIMS[petSize].sprite)
@@ -394,8 +396,13 @@ export default function App() {
 
         if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
         saveTimerRef.current = setTimeout(async () => {
-          const b = boundsRef.current
+          // Drag may have crossed monitors — recompute bounds against the
+          // monitor the pet is on now so it adopts that screen as its new home.
+          const fresh = await loadScreenBounds(PET_SIZE_DIMS[petSizeRef.current].sprite)
+          const b = fresh ?? boundsRef.current
           if (!b) return
+          if (fresh) boundsRef.current = fresh
+
           const currentPos = await appWindow.outerPosition()
           const targetX = Math.max(b.minX, Math.min(b.maxX, currentPos.x))
 
