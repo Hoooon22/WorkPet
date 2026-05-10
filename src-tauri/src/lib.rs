@@ -897,6 +897,7 @@ fn position_default(window: &tauri::WebviewWindow) {
 // ─────────────────────────────────────────────────────────────────────────
 
 const PET_OPTIONS: &[(&str, &str)] = &[
+    ("pet:pico", "🤖 피코"),
     ("pet:cat", "🐱 고양이"),
     ("pet:rabbit", "🐰 토끼"),
     ("pet:hedgehog", "🦔 고슴도치"),
