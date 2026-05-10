@@ -153,17 +153,13 @@ export default function WalkBoard({ roomCode, petId, displayName, onLeave }: Wal
     return () => clearInterval(t)
   }, [roomCode])
 
-  // Leave on close
+  // Leave on close (fire-and-forget so the close doesn't get blocked)
   useEffect(() => {
     let unlisten: (() => void) | null = null
     ;(async () => {
       const win = getCurrentWebviewWindow()
-      const off = await win.onCloseRequested(async () => {
-        try {
-          await leaveRoom(roomCode)
-        } catch {
-          // noop
-        }
+      const off = await win.onCloseRequested(() => {
+        void leaveRoom(roomCode).catch(() => {})
       })
       unlisten = off
     })()
