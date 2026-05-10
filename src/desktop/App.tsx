@@ -126,10 +126,10 @@ const ONESHOT_ACTIONS: PetAction[] = [
   'angry',
 ]
 
-const PET_SIZE_DIMS: Record<PetSize, { hit: number; sprite: number }> = {
-  small: { hit: 120, sprite: 80 },
-  medium: { hit: 160, sprite: 120 },
-  large: { hit: 200, sprite: 160 },
+const PET_SIZE_DIMS: Record<PetSize, { sprite: number }> = {
+  small: { sprite: 80 },
+  medium: { sprite: 120 },
+  large: { sprite: 160 },
 }
 
 const isPetSize = (s: unknown): s is PetSize =>
@@ -1146,7 +1146,7 @@ export default function App() {
 
   const visibleBubble = stickyBubble ?? timerBubble ?? bubbleMessage
 
-  const { hit: hitSize, sprite: spriteSize } = PET_SIZE_DIMS[petSize]
+  const { sprite: spriteSize } = PET_SIZE_DIMS[petSize]
 
   return (
     <div
@@ -1199,8 +1199,8 @@ export default function App() {
           onMouseLeave={handleMouseLeave}
           onDoubleClick={handleDoubleClick}
           style={{
-            width: hitSize,
-            height: hitSize,
+            width: spriteSize,
+            height: spriteSize,
             display: 'flex',
             alignItems: 'flex-end',
             justifyContent: 'center',
