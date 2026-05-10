@@ -111,7 +111,19 @@ type CursorTuple = [number, number] | null
 type Direction = 'left' | 'right'
 type WanderPhase = 'idle' | 'walk'
 
-const ONESHOT_ACTIONS: PetAction[] = ['jump', 'love', 'wave', 'dance', 'stretch', 'peek']
+const ONESHOT_ACTIONS: PetAction[] = [
+  'jump',
+  'love',
+  'wave',
+  'dance',
+  'stretch',
+  'peek',
+  'smile',
+  'cry',
+  'think',
+  'surprise',
+  'angry',
+]
 
 const PET_SIZE_DIMS: Record<PetSize, { hit: number; sprite: number }> = {
   small: { hit: 120, sprite: 80 },
@@ -1129,6 +1141,7 @@ export default function App() {
         >
           <PetSprite
             kind={petKind}
+            action={effectiveAction}
             size={spriteSize}
             direction={direction}
             walking={effectiveAction === 'walk'}

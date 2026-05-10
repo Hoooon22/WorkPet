@@ -21,6 +21,11 @@ export type PetAction =
   | 'love'
   | 'jump'
   | 'tumble'
+  | 'smile'
+  | 'cry'
+  | 'think'
+  | 'surprise'
+  | 'angry'
 
 export interface PetActionMotion {
   animate: TargetAndTransition

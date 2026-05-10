@@ -1,10 +1,12 @@
 import type { PetId } from '../../shared/types'
 import { isSvgPetId } from '../../shared/petCatalog'
 import LottiePet from './LottiePet'
-import Pico from './Pico'
+import Pico, { type PicoAction } from './Pico'
+import type { PetAction } from './petActions'
 
 interface PetSpriteProps {
   kind: PetId
+  action?: PetAction
   direction?: 'left' | 'right'
   size?: number
   walking?: boolean
@@ -12,8 +14,29 @@ interface PetSpriteProps {
   onFrame?: (frame: number) => void
 }
 
+const PICO_FALLBACK: Record<PetAction, PicoAction> = {
+  idle: 'idle',
+  walk: 'walking',
+  sleep: 'sleep',
+  alert: 'alert',
+  wave: 'wave',
+  love: 'love',
+  dance: 'dance',
+  smile: 'smile',
+  cry: 'cry',
+  think: 'think',
+  surprise: 'surprise',
+  angry: 'angry',
+  yawn: 'sleep',
+  peek: 'surprise',
+  stretch: 'idle',
+  jump: 'surprise',
+  tumble: 'cry',
+}
+
 export default function PetSprite({
   kind,
+  action,
   direction = 'left',
   size = 120,
   walking = false,
@@ -21,8 +44,14 @@ export default function PetSprite({
   onFrame,
 }: PetSpriteProps) {
   if (isSvgPetId(kind)) {
-    const action = paused ? 'sleep' : walking ? 'walking' : 'idle'
-    return <Pico action={action} direction={direction} size={size} />
+    const picoAction: PicoAction = action
+      ? PICO_FALLBACK[action]
+      : paused
+        ? 'sleep'
+        : walking
+          ? 'walking'
+          : 'idle'
+    return <Pico action={picoAction} direction={direction} size={size} />
   }
   return (
     <LottiePet
