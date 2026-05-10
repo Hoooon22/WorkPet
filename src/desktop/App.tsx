@@ -618,12 +618,26 @@ export default function App() {
   // The pet window is larger than the visible sprite, and a transparent Tauri
   // window still captures mouse events at the OS level. Poll the cursor and
   // toggle setIgnoreCursorEvents so clicks pass through dead space to apps
-  // behind the window.
+  // behind the window. Hit test is alpha-aware: only painted SVG shapes
+  // inside the pet count as "in pet"; transparent space within the sprite
+  // bounding box (returned as the <svg> root) falls through to other apps.
   useEffect(() => {
     let cancelled = false
     let inFlight = false
     let currentlyIgnoring: boolean | null = null
     const dpr = window.devicePixelRatio || 1
+    const PAINTED_SVG_TAGS = new Set([
+      'path',
+      'circle',
+      'rect',
+      'ellipse',
+      'line',
+      'polygon',
+      'polyline',
+      'text',
+      'tspan',
+      'image',
+    ])
 
     const setIgnore = async (ignore: boolean) => {
       if (currentlyIgnoring === ignore) return
@@ -644,13 +658,11 @@ export default function App() {
         const winRelX = (cursor[0] - posCache.x) / dpr
         const winRelY = (cursor[1] - posCache.y) / dpr
 
-        const hitRect = petHitRef.current?.getBoundingClientRect()
+        const el = document.elementFromPoint(winRelX, winRelY)
         const inPet =
-          !!hitRect &&
-          winRelX >= hitRect.left &&
-          winRelX < hitRect.right &&
-          winRelY >= hitRect.top &&
-          winRelY < hitRect.bottom
+          !!el &&
+          !!petHitRef.current?.contains(el) &&
+          PAINTED_SVG_TAGS.has(el.tagName.toLowerCase())
 
         let inBubble = false
         if (!inPet && bubbleRef.current) {
