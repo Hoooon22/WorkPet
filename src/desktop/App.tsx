@@ -1064,7 +1064,11 @@ export default function App() {
 
   const effectiveAction: PetAction =
     oneShotAction ??
-    (isAway || isSleepy ? 'sleep' : wanderPaused ? 'sleep' : wanderAction)
+    (wanderAction === 'walk'
+      ? 'walk'
+      : isAway || isSleepy || wanderPaused
+        ? 'sleep'
+        : wanderAction)
 
   // Pet hidden when dismissed or signed out (no signed-in account → no briefing → no reason to show)
   const showPet = signedIn && petState !== 'dismissed'
