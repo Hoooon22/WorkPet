@@ -70,4 +70,5 @@ export const KEYS = {
   USAGE_TODAY: 'usage:today',
   USAGE_HISTORY: 'usage:history',
   USAGE_SUMMARY_LAST_FIRED: 'usage:summary_last_fired',
+  PANEL_FOCUS_INTENT: 'panel:focus_intent',
 } as const

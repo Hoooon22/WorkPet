@@ -11,6 +11,7 @@ import type {
 import { EMPTY_BRIEFING, IDLE_FOCUS_TIMER } from '../../shared/types'
 import {
   getValue,
+  deleteValue,
   KEYS,
   subscribeStorage,
 } from '../../shared/storage'
@@ -47,7 +48,36 @@ export default function Panel() {
       const tok = await getValue<string>(KEYS.AUTH_TOKEN)
       setSignedIn(!!tok)
       setEmail(await getSignedInEmail())
+      // Pet may have queued a navigation intent before opening this panel.
+      // Read on every fresh mount, then clear so it doesn't re-fire later.
+      const intent = await getValue<string>(KEYS.PANEL_FOCUS_INTENT)
+      if (intent === 'gemini-key') {
+        await deleteValue(KEYS.PANEL_FOCUS_INTENT)
+        setTab('settings')
+        setFocusGeminiSignal((s) => s + 1)
+      }
     })()
+  }, [])
+
+  // When already-open panel is told to focus the gemini key, react to the
+  // storage update (storage subscription survives across hide/show cycles).
+  useEffect(() => {
+    let cancelled = false
+    let off: (() => void) | undefined
+    ;(async () => {
+      off = await subscribeStorage<string>(KEYS.PANEL_FOCUS_INTENT, (val) => {
+        if (cancelled) return
+        if (val === 'gemini-key') {
+          void deleteValue(KEYS.PANEL_FOCUS_INTENT)
+          setTab('settings')
+          setFocusGeminiSignal((s) => s + 1)
+        }
+      })
+    })()
+    return () => {
+      cancelled = true
+      off?.()
+    }
   }, [])
 
   // Listen for events from pet
@@ -79,12 +109,7 @@ export default function Panel() {
         if (cancelled) return
         if (val) setBriefing(val)
       })
-      const off6 = await listen('orbit:focus-settings-gemini', () => {
-        if (cancelled) return
-        setTab('settings')
-        setFocusGeminiSignal((s) => s + 1)
-      })
-      offs.push(off1, off2, off3, off4, off5, off6)
+      offs.push(off1, off2, off3, off4, off5)
     })()
     return () => {
       cancelled = true

@@ -1182,8 +1182,11 @@ export default function App() {
         setStickyBubble('🔑 Gemini API 키가 필요해요. 클릭하면 설정 화면으로 이동해요.')
         stickyActionRef.current = () => {
           void (async () => {
+            // Write the intent BEFORE opening panel so a fresh panel reads it
+            // on mount; Tauri events emitted before the panel's listener is
+            // registered get dropped silently.
+            await setValue(KEYS.PANEL_FOCUS_INTENT, 'gemini-key')
             await openPanel()
-            await emit('orbit:focus-settings-gemini')
           })()
         }
         return
