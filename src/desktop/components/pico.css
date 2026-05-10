@@ -3,13 +3,16 @@
  */
 
 .pico { display: block; }
+/* body-wrap pivots at its own center-bottom (feet). Limbs/head/antenna
+ * use SVG viewport coordinates (default transform-box: view-box) so the
+ * px values name actual joint positions in the 240x340 viewBox. */
 .pico .body-wrap { transform-box: fill-box; transform-origin: center bottom; }
-.pico .head { transform-box: fill-box; transform-origin: 120px 145px; }
-.pico .arm-left { transform-box: fill-box; transform-origin: 78px 168px; }
-.pico .arm-right { transform-box: fill-box; transform-origin: 162px 168px; }
-.pico .leg-left { transform-box: fill-box; transform-origin: 102px 234px; }
-.pico .leg-right { transform-box: fill-box; transform-origin: 138px 234px; }
-.pico .antenna { transform-box: fill-box; transform-origin: 120px 48px; }
+.pico .head { transform-origin: 120px 145px; }
+.pico .arm-left { transform-origin: 78px 170px; }
+.pico .arm-right { transform-origin: 162px 170px; }
+.pico .leg-left { transform-origin: 102px 234px; }
+.pico .leg-right { transform-origin: 138px 234px; }
+.pico .antenna { transform-origin: 120px 48px; }
 .pico .antenna-bulb { transform-box: fill-box; transform-origin: center; }
 .pico .ground-shadow { fill: rgba(0, 0, 0, 0.45); }
 
