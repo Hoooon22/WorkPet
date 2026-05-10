@@ -72,6 +72,31 @@ fn get_frontmost_app() -> Option<String> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+// System-wide idle detection (for away-from-desk pet behaviour).
+// macOS: CGEventSourceSecondsSinceLastEventType reports seconds since the
+// last keyboard/mouse event from the HID system source.
+// ─────────────────────────────────────────────────────────────────────────
+
+#[cfg(target_os = "macos")]
+#[link(name = "CoreGraphics", kind = "framework")]
+extern "C" {
+    fn CGEventSourceSecondsSinceLastEventType(source: u32, event_type: u32) -> f64;
+}
+
+#[tauri::command]
+fn get_idle_seconds() -> f64 {
+    #[cfg(target_os = "macos")]
+    {
+        // kCGEventSourceStateHIDSystemState = 1, kCGAnyInputEventType = 0xFFFFFFFF
+        unsafe { CGEventSourceSecondsSinceLastEventType(1, 0xFFFFFFFF) }
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        0.0
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // OAuth (Google) — Loopback + PKCE
 // ─────────────────────────────────────────────────────────────────────────
 
@@ -696,6 +721,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             get_cursor_position,
             get_frontmost_app,
+            get_idle_seconds,
             oauth_google_signin,
             oauth_google_refresh,
             oauth_google_revoke,

@@ -10,6 +10,7 @@ import PetSpeechBubble from './components/PetSpeechBubble'
 import type { PetAction } from './components/petActions'
 import type {
   BriefingPayload,
+  CalendarEvent,
   GachaResult,
   LottiePetId,
   PetId,
@@ -45,6 +46,9 @@ const ONESHOT_ACTION_DURATION_MS = 1200
 const FALL_ANIMATION_MS = 500
 const SLEEPY_TIMEOUT_MS = 120_000
 const GREETING_DURATION_MS = 3000
+const AWAY_THRESHOLD_SEC = 300
+const AWAY_POLL_MS = 10_000
+const AWAY_GREET_DURATION_MS = 4500
 
 const log = (...args: unknown[]) => console.log('[orbit]', ...args)
 
@@ -160,6 +164,36 @@ function formatTimer(seconds: number): string {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
 }
 
+type AwayReason = 'lunch' | 'meeting' | null
+
+function classifyAwayReason(
+  start: Date,
+  end: Date,
+  events: CalendarEvent[],
+): AwayReason {
+  const startMs = start.getTime()
+  const endMs = end.getTime()
+  for (const ev of events) {
+    const evStart = new Date(ev.startTime).getTime()
+    const evEnd = new Date(ev.endTime).getTime()
+    if (Number.isFinite(evStart) && Number.isFinite(evEnd) && startMs < evEnd && endMs > evStart) {
+      return 'meeting'
+    }
+  }
+  const minOfDay = start.getHours() * 60 + start.getMinutes()
+  if (minOfDay >= 11 * 60 + 30 && minOfDay <= 13 * 60 + 30) return 'lunch'
+  return null
+}
+
+function greetingForAway(reason: AwayReason, awayMs: number): string {
+  if (reason === 'lunch') return '맛있는 점심 드셨어요? 🍱'
+  if (reason === 'meeting') return '회의 잘 마치셨어요? 📋'
+  const min = Math.round(awayMs / 60_000)
+  if (min >= 120) return `오랜만이에요! ${Math.round(min / 60)}시간 만이네요 ✨`
+  if (min >= 60) return `오랜만이에요! ${min}분 만이네요 ✨`
+  return '어디 갔다 왔어요? 👋'
+}
+
 export default function App() {
   // Pet visual / wander state (existing)
   const [direction, setDirection] = useState<Direction>('left')
@@ -178,6 +212,7 @@ export default function App() {
   const [stickyBubble, setStickyBubble] = useState<string | null>(null)
   const [focusTimer, setFocusTimer] = useState<FocusTimerState>(IDLE_FOCUS_TIMER)
   const [isSleepy, setIsSleepy] = useState(false)
+  const [isAway, setIsAway] = useState(false)
   const [panelOpen, setPanelOpen] = useState(false)
 
   const wanderActionRef = useRef<WanderPhase>('idle')
@@ -200,6 +235,10 @@ export default function App() {
   const mouseDownAtRef = useRef<{ x: number; y: number } | null>(null)
   const dragStartedRef = useRef(false)
   const lastPanelClosedAtRef = useRef(0)
+
+  const isAwayRef = useRef(false)
+  const awayStartedAtRef = useRef<number | null>(null)
+  const briefingRef = useRef<BriefingPayload>(EMPTY_BRIEFING)
 
   const petHitRef = useRef<HTMLDivElement | null>(null)
   const bubbleRef = useRef<HTMLDivElement | null>(null)
@@ -225,6 +264,12 @@ export default function App() {
   useEffect(() => {
     void invoke('set_pet_size_state', { size: petSize }).catch(() => {})
   }, [petSize])
+  useEffect(() => {
+    isAwayRef.current = isAway
+  }, [isAway])
+  useEffect(() => {
+    briefingRef.current = briefing
+  }, [briefing])
 
   // ── Setup: bounds, store, persisted state, onMoved, scheduler ─
   useEffect(() => {
@@ -631,7 +676,13 @@ export default function App() {
       if (cancelled || inFlight) return
       const bounds = boundsRef.current
       if (!bounds) return
-      if (wanderPausedRef.current || panelOpenRef.current || petState === 'dismissed' || !signedIn) {
+      if (
+        wanderPausedRef.current ||
+        panelOpenRef.current ||
+        petState === 'dismissed' ||
+        !signedIn ||
+        isAwayRef.current
+      ) {
         if (phase === 'walk') enterIdle(Date.now())
         return
       }
@@ -694,6 +745,48 @@ export default function App() {
       if (sleepyTimerRef.current) clearTimeout(sleepyTimerRef.current)
     }
   }, [petState, panelOpen, bubbleMessage])
+
+  // ── Away detection: poll system idle, classify lunch/meeting, greet on return ──
+  useEffect(() => {
+    if (petState === 'dismissed' || !signedIn) {
+      if (isAwayRef.current) setIsAway(false)
+      awayStartedAtRef.current = null
+      return
+    }
+    let cancelled = false
+    const tick = async () => {
+      if (cancelled) return
+      let idle = 0
+      try {
+        idle = await invoke<number>('get_idle_seconds')
+      } catch {
+        return
+      }
+      if (!isAwayRef.current && idle >= AWAY_THRESHOLD_SEC) {
+        awayStartedAtRef.current = Date.now() - idle * 1000
+        setIsAway(true)
+      } else if (isAwayRef.current && idle < AWAY_THRESHOLD_SEC) {
+        const startedAt = awayStartedAtRef.current
+        awayStartedAtRef.current = null
+        setIsAway(false)
+        if (startedAt) {
+          const awayMs = Date.now() - startedAt
+          const reason = classifyAwayReason(
+            new Date(startedAt),
+            new Date(),
+            briefingRef.current.events,
+          )
+          showBubble(greetingForAway(reason, awayMs), AWAY_GREET_DURATION_MS)
+        }
+      }
+    }
+    void tick()
+    const id = setInterval(tick, AWAY_POLL_MS)
+    return () => {
+      cancelled = true
+      clearInterval(id)
+    }
+  }, [petState, signedIn])
 
   // ── Morning greeting ──
   useEffect(() => {
@@ -954,7 +1047,7 @@ export default function App() {
 
   const effectiveAction: PetAction =
     oneShotAction ??
-    (isSleepy ? 'sleep' : wanderPaused ? 'sleep' : wanderAction)
+    (isAway || isSleepy ? 'sleep' : wanderPaused ? 'sleep' : wanderAction)
 
   // Pet hidden when dismissed or signed out (no signed-in account → no briefing → no reason to show)
   const showPet = signedIn && petState !== 'dismissed'
