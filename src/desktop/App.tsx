@@ -49,6 +49,9 @@ const GREETING_DURATION_MS = 3000
 const AWAY_THRESHOLD_SEC = 300
 const AWAY_POLL_MS = 10_000
 const AWAY_GREET_DURATION_MS = 4500
+const FAREWELL_HOLD_MS = 1500
+const WELCOME_GREET_RENDER_DELAY_MS = 250
+const WELCOME_GREET_DURATION_MS = 2800
 
 const log = (...args: unknown[]) => console.log('[orbit]', ...args)
 
@@ -908,13 +911,29 @@ export default function App() {
   function handlePanelAction(type: string, payload?: unknown) {
     switch (type) {
       case 'dismiss-pet':
-        void setValue(KEYS.PET_DISMISSED, true)
-        setPetState('dismissed')
         void closePanel()
+        showBubble('다음에 또 봐요! 👋', FAREWELL_HOLD_MS)
+        setOneShotAction('wave')
+        if (oneShotTimerRef.current) clearTimeout(oneShotTimerRef.current)
+        oneShotTimerRef.current = setTimeout(() => {
+          setOneShotAction(null)
+          void setValue(KEYS.PET_DISMISSED, true)
+          setPetState('dismissed')
+        }, FAREWELL_HOLD_MS)
         break
       case 'show-pet':
         void setValue(KEYS.PET_DISMISSED, false)
         setPetState('idle')
+        // Pet must mount before the wave/bubble play, otherwise the first frame
+        // is missed and only the bubble animates over an empty window.
+        setTimeout(() => {
+          showBubble('다시 만나서 반가워요! ✨', WELCOME_GREET_DURATION_MS)
+          setOneShotAction('wave')
+          if (oneShotTimerRef.current) clearTimeout(oneShotTimerRef.current)
+          oneShotTimerRef.current = setTimeout(() => {
+            setOneShotAction(null)
+          }, FAREWELL_HOLD_MS)
+        }, WELCOME_GREET_RENDER_DELAY_MS)
         break
       case 'mark-read':
         // ignore — driven via storage updates
