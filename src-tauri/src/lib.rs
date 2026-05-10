@@ -74,7 +74,9 @@ fn get_frontmost_app() -> Option<String> {
 // ─────────────────────────────────────────────────────────────────────────
 // System-wide idle detection (for away-from-desk pet behaviour).
 // macOS: CGEventSourceSecondsSinceLastEventType reports seconds since the
-// last keyboard/mouse event from the HID system source.
+//        last keyboard/mouse event from the HID system source.
+// Windows: GetLastInputInfo returns the tick count of the last input; we
+//          subtract from GetTickCount (wrapping handles 49.7-day overflow).
 // ─────────────────────────────────────────────────────────────────────────
 
 #[cfg(target_os = "macos")]
@@ -83,17 +85,38 @@ extern "C" {
     fn CGEventSourceSecondsSinceLastEventType(source: u32, event_type: u32) -> f64;
 }
 
+#[cfg(target_os = "macos")]
+fn idle_seconds_impl() -> f64 {
+    // kCGEventSourceStateHIDSystemState = 1, kCGAnyInputEventType = 0xFFFFFFFF
+    unsafe { CGEventSourceSecondsSinceLastEventType(1, 0xFFFFFFFF) }
+}
+
+#[cfg(target_os = "windows")]
+fn idle_seconds_impl() -> f64 {
+    use windows_sys::Win32::System::SystemInformation::GetTickCount;
+    use windows_sys::Win32::UI::Input::KeyboardAndMouse::{GetLastInputInfo, LASTINPUTINFO};
+
+    let mut info = LASTINPUTINFO {
+        cbSize: std::mem::size_of::<LASTINPUTINFO>() as u32,
+        dwTime: 0,
+    };
+    unsafe {
+        if GetLastInputInfo(&mut info) == 0 {
+            return 0.0;
+        }
+        let now = GetTickCount();
+        now.wrapping_sub(info.dwTime) as f64 / 1000.0
+    }
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+fn idle_seconds_impl() -> f64 {
+    0.0
+}
+
 #[tauri::command]
 fn get_idle_seconds() -> f64 {
-    #[cfg(target_os = "macos")]
-    {
-        // kCGEventSourceStateHIDSystemState = 1, kCGAnyInputEventType = 0xFFFFFFFF
-        unsafe { CGEventSourceSecondsSinceLastEventType(1, 0xFFFFFFFF) }
-    }
-    #[cfg(not(target_os = "macos"))]
-    {
-        0.0
-    }
+    idle_seconds_impl()
 }
 
 // ─────────────────────────────────────────────────────────────────────────
