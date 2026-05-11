@@ -48,9 +48,21 @@ const WANDER_TICK_MS = 50
 const WANDER_SPEED_PX_PER_SEC = 80
 const USER_ACTION_COOLDOWN_MS = 1500
 const PROGRAMMATIC_MOVE_FLAG_MS = 120
-const DRAG_END_DEBOUNCE_MS = 300
+const DRAG_END_DEBOUNCE_MS = 120
 const DRAG_MOVE_THRESHOLD_PX = 4
 const FALL_ANIMATION_MS = 500
+// Throw physics ─ velocity captured from the last drag samples, then a
+// bouncy projectile arc instead of the straight-down fall.
+const THROW_VELOCITY_WINDOW_MS = 120
+const THROW_MIN_LAUNCH_PX_PER_SEC = 320
+const THROW_MAX_LAUNCH_PX_PER_SEC = 2800
+const THROW_GRAVITY_PX_PER_SEC2 = 2600
+const THROW_WALL_RESTITUTION = 0.55
+const THROW_GROUND_RESTITUTION = 0.32
+const THROW_GROUND_FRICTION = 0.82
+const THROW_REST_VY_PX_PER_SEC = 70
+const THROW_REST_VX_PX_PER_SEC = 35
+const THROW_TUMBLE_MS = 1500
 const SLEEPY_TIMEOUT_MS = 300_000
 const GREETING_DURATION_MS = 3000
 const AWAY_THRESHOLD_SEC = 300
@@ -101,6 +113,86 @@ function animateFall(x: number, fromY: number, toY: number, durationMs: number):
       }
       if (t < 1) requestAnimationFrame(step)
       else resolve()
+    }
+    requestAnimationFrame(step)
+  })
+}
+
+interface DragSample {
+  t: number
+  x: number
+  y: number
+}
+
+interface ThrowVelocity {
+  vx: number
+  vy: number
+  speed: number
+}
+
+function computeThrowVelocity(samples: DragSample[]): ThrowVelocity {
+  if (samples.length < 2) return { vx: 0, vy: 0, speed: 0 }
+  const last = samples[samples.length - 1]
+  let earliest = samples[samples.length - 2]
+  for (let i = samples.length - 2; i >= 0; i--) {
+    if (last.t - samples[i].t > THROW_VELOCITY_WINDOW_MS) break
+    earliest = samples[i]
+  }
+  const dtSec = (last.t - earliest.t) / 1000
+  if (dtSec < 0.012) return { vx: 0, vy: 0, speed: 0 }
+  let vx = (last.x - earliest.x) / dtSec
+  let vy = (last.y - earliest.y) / dtSec
+  const speed = Math.hypot(vx, vy)
+  if (speed > THROW_MAX_LAUNCH_PX_PER_SEC) {
+    const k = THROW_MAX_LAUNCH_PX_PER_SEC / speed
+    vx *= k
+    vy *= k
+    return { vx, vy, speed: THROW_MAX_LAUNCH_PX_PER_SEC }
+  }
+  return { vx, vy, speed }
+}
+
+function animateThrow(
+  fromX: number,
+  fromY: number,
+  vx0: number,
+  vy0: number,
+  bounds: ScreenBounds,
+  onTick?: (vxNow: number, vyNow: number) => void,
+): Promise<{ x: number; y: number }> {
+  return new Promise((resolve) => {
+    let x = fromX
+    let y = fromY
+    let vx = vx0
+    let vy = vy0
+    let lastT = performance.now()
+    const step = (now: number) => {
+      const dt = Math.min(0.045, (now - lastT) / 1000)
+      lastT = now
+      vy += THROW_GRAVITY_PX_PER_SEC2 * dt
+      x += vx * dt
+      y += vy * dt
+      if (x < bounds.minX) {
+        x = bounds.minX
+        vx = -vx * THROW_WALL_RESTITUTION
+      } else if (x > bounds.maxX) {
+        x = bounds.maxX
+        vx = -vx * THROW_WALL_RESTITUTION
+      }
+      if (y >= bounds.groundY) {
+        y = bounds.groundY
+        if (Math.abs(vy) < THROW_REST_VY_PX_PER_SEC && Math.abs(vx) < THROW_REST_VX_PX_PER_SEC) {
+          void setWindowPosition(Math.round(x), Math.round(y))
+          onTick?.(0, 0)
+          resolve({ x: Math.round(x), y: Math.round(y) })
+          return
+        }
+        vy = -vy * THROW_GROUND_RESTITUTION
+        vx *= THROW_GROUND_FRICTION
+      }
+      void setWindowPosition(Math.round(x), Math.round(y))
+      onTick?.(vx, vy)
+      requestAnimationFrame(step)
     }
     requestAnimationFrame(step)
   })
@@ -267,13 +359,20 @@ export default function App() {
   const sleepyTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const greetingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const loginHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const alertBubbleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // The alert bubble (mail / calendar / task) is shown as a sticky bubble so
+  // it only goes away on user dismissal. These refs let us tell our own sticky
+  // alert apart from other sticky bubbles (e.g. LLM key prompt) so we don't
+  // clobber them, and let us suppress immediate re-show after user dismisses.
+  const alertStickyRef = useRef<string | null>(null)
+  const dismissedAlertRef = useRef<string | null>(null)
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const morningGreetingShownRef = useRef(false)
   const updateInFlightRef = useRef(false)
 
   const mouseDownAtRef = useRef<{ x: number; y: number } | null>(null)
   const dragStartedRef = useRef(false)
+  const dragSamplesRef = useRef<DragSample[]>([])
+  const isThrowingRef = useRef(false)
   const lastPanelClosedAtRef = useRef(0)
 
   const isAwayRef = useRef(false)
@@ -356,6 +455,10 @@ export default function App() {
       if (e.key !== 'Escape') return
       if (stickyBubble) {
         stickyActionRef.current = null
+        if (alertStickyRef.current && alertStickyRef.current === stickyBubble) {
+          dismissedAlertRef.current = alertStickyRef.current
+          alertStickyRef.current = null
+        }
         setStickyBubble(null)
         return
       }
@@ -363,10 +466,6 @@ export default function App() {
         if (greetingTimerRef.current) {
           clearTimeout(greetingTimerRef.current)
           greetingTimerRef.current = null
-        }
-        if (alertBubbleTimerRef.current) {
-          clearTimeout(alertBubbleTimerRef.current)
-          alertBubbleTimerRef.current = null
         }
         setBubbleMessage(null)
         return
@@ -479,7 +578,23 @@ export default function App() {
         posCache.y = payload.y
 
         if (isRecentProgrammatic()) return
+        if (isThrowingRef.current) return
         lastUserActionAtRef.current = Date.now()
+
+        // Collect a short trailing buffer of drag samples so we can read the
+        // release velocity when the debounce fires. Old samples are dropped to
+        // keep the window tight (last ~250ms).
+        const tNow = Date.now()
+        dragSamplesRef.current.push({ t: tNow, x: payload.x, y: payload.y })
+        if (dragSamplesRef.current.length > 24) {
+          dragSamplesRef.current.splice(0, dragSamplesRef.current.length - 24)
+        }
+        while (
+          dragSamplesRef.current.length > 2 &&
+          tNow - dragSamplesRef.current[0].t > 260
+        ) {
+          dragSamplesRef.current.shift()
+        }
 
         // Notify panel for anchor sync
         void emit('orbit:pet-moved', { x: payload.x, y: payload.y })
@@ -494,6 +609,45 @@ export default function App() {
           if (fresh) boundsRef.current = fresh
 
           const currentPos = await appWindow.outerPosition()
+          const samples = dragSamplesRef.current
+          dragSamplesRef.current = []
+          const launch = computeThrowVelocity(samples)
+
+          if (launch.speed >= THROW_MIN_LAUNCH_PX_PER_SEC) {
+            // Throw: physics arc with wall + ground bounces, surprised face
+            // while airborne, dizzy tumble after landing.
+            isThrowingRef.current = true
+            lastUserActionAtRef.current = Date.now()
+            setDirection(launch.vx >= 0 ? 'right' : 'left')
+            setOneShotAction('surprise')
+            if (oneShotTimerRef.current) {
+              clearTimeout(oneShotTimerRef.current)
+              oneShotTimerRef.current = null
+            }
+            const finalPos = await animateThrow(
+              currentPos.x,
+              currentPos.y,
+              launch.vx,
+              launch.vy,
+              b,
+              (vxNow) => {
+                // Face the direction of horizontal travel, including after
+                // wall bounces (where vx flips sign).
+                if (Math.abs(vxNow) > 60) {
+                  setDirection(vxNow >= 0 ? 'right' : 'left')
+                }
+                lastUserActionAtRef.current = Date.now()
+              },
+            )
+            isThrowingRef.current = false
+            lastUserActionAtRef.current = Date.now()
+            playAction('tumble', THROW_TUMBLE_MS)
+
+            await setValue(KEYS.WINDOW_POSITION, { x: finalPos.x, y: finalPos.y })
+            void emit('orbit:pet-moved', { x: finalPos.x, y: finalPos.y })
+            return
+          }
+
           const targetX = Math.max(b.minX, Math.min(b.maxX, currentPos.x))
 
           if (currentPos.y < b.groundY) {
@@ -1066,25 +1220,38 @@ export default function App() {
     playAction('dance', 3000)
   }, [briefing, petState])
 
-  // ── Alert bubble auto-show ──
+  // ── Alert bubble: sticky, click-only dismissal ──
+  // The mail / calendar / task alert stays visible until the user actively
+  // clicks it (or another sticky / focus loss / ESC takes it away). Auto-hide
+  // timer is intentionally absent so the user can't miss a notification.
   useEffect(() => {
-    if (alertBubbleTimerRef.current) clearTimeout(alertBubbleTimerRef.current)
     if (petState === 'alert' && !panelOpen) {
       // urgent 알림은 briefing.summary에 발신자·제목·일정 시간이 담겨 있어 그대로 보여준다.
       // 수동 새로고침으로 인한 비-urgent 상태는 집계 요약을 사용한다.
       const detailed = briefing.urgent && briefing.summary
       const summary = detailed ? briefing.summary : liveSummary(briefing)
-      const duration = detailed ? 6500 : 5000
-      setBubbleMessage(summary)
-      playAction('alert', duration)
-      alertBubbleTimerRef.current = setTimeout(() => {
-        setBubbleMessage((prev) => (prev === summary ? null : prev))
-      }, duration)
+      if (alertStickyRef.current === summary) return
+      if (dismissedAlertRef.current === summary) return
+      alertStickyRef.current = summary
+      stickyActionRef.current = null
+      setStickyBubble(summary)
+      playAction('alert', detailed ? 6500 : 5000)
+      return
     }
-    return () => {
-      if (alertBubbleTimerRef.current) clearTimeout(alertBubbleTimerRef.current)
+    // Out of alert state OR panel opened → drop our sticky alert if it's still
+    // showing. Other sticky bubbles (LLM key prompt etc.) are left untouched.
+    if (alertStickyRef.current) {
+      const ours = alertStickyRef.current
+      alertStickyRef.current = null
+      setStickyBubble((prev) => (prev === ours ? null : prev))
     }
   }, [petState, panelOpen, briefing])
+
+  // Forget the user-dismissed summary once we leave alert state, so the next
+  // round of alerts can pop up cleanly without being suppressed by stale text.
+  useEffect(() => {
+    if (petState !== 'alert') dismissedAlertRef.current = null
+  }, [petState])
 
   // ── Focus phase mirror to storage (for team room window) ──
   useEffect(() => {
@@ -1130,11 +1297,11 @@ export default function App() {
       clearTimeout(greetingTimerRef.current)
       greetingTimerRef.current = null
     }
-    if (alertBubbleTimerRef.current) {
-      clearTimeout(alertBubbleTimerRef.current)
-      alertBubbleTimerRef.current = null
-    }
     stickyActionRef.current = null
+    if (alertStickyRef.current) {
+      dismissedAlertRef.current = alertStickyRef.current
+      alertStickyRef.current = null
+    }
     setStickyBubble(null)
     setBubbleMessage(null)
     if (askingRef.current) {
@@ -1576,6 +1743,16 @@ export default function App() {
                     ? () => {
                         const action = stickyActionRef.current
                         stickyActionRef.current = null
+                        if (
+                          alertStickyRef.current &&
+                          alertStickyRef.current === stickyBubble
+                        ) {
+                          // User chose to dismiss the alert — remember it so
+                          // the next briefing tick with the same summary
+                          // doesn't immediately pop it back up.
+                          dismissedAlertRef.current = alertStickyRef.current
+                          alertStickyRef.current = null
+                        }
                         setStickyBubble(null)
                         if (action) action()
                       }
