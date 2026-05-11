@@ -48,14 +48,18 @@ const WANDER_TICK_MS = 50
 const WANDER_SPEED_PX_PER_SEC = 80
 const USER_ACTION_COOLDOWN_MS = 1500
 const PROGRAMMATIC_MOVE_FLAG_MS = 120
-const DRAG_END_DEBOUNCE_MS = 120
+const DRAG_END_DEBOUNCE_MS = 80
 const DRAG_MOVE_THRESHOLD_PX = 4
 const FALL_ANIMATION_MS = 500
-// Throw physics ─ velocity captured from the last drag samples, then a
-// bouncy projectile arc instead of the straight-down fall.
-const THROW_VELOCITY_WINDOW_MS = 120
-const THROW_MIN_LAUNCH_PX_PER_SEC = 320
-const THROW_MAX_LAUNCH_PX_PER_SEC = 2800
+// Throw physics ─ velocity captured from real cursor samples taken during the
+// drag, then a bouncy projectile arc instead of the straight-down fall.
+// Window-onMoved events are coalesced by the OS during native drags, so we
+// poll `get_cursor_position` to get high-fidelity samples of what the user's
+// hand is actually doing.
+const DRAG_CURSOR_POLL_MS = 16
+const THROW_VELOCITY_WINDOW_MS = 70
+const THROW_MIN_LAUNCH_PX_PER_SEC = 260
+const THROW_MAX_LAUNCH_PX_PER_SEC = 3200
 const THROW_GRAVITY_PX_PER_SEC2 = 2600
 const THROW_WALL_RESTITUTION = 0.55
 const THROW_GROUND_RESTITUTION = 0.32
@@ -372,6 +376,11 @@ export default function App() {
   const mouseDownAtRef = useRef<{ x: number; y: number } | null>(null)
   const dragStartedRef = useRef(false)
   const dragSamplesRef = useRef<DragSample[]>([])
+  // Cursor-position samples taken at ~60Hz during a drag. These reflect the
+  // user's actual hand movement, independent of how often the OS reports
+  // window-onMoved during a native drag.
+  const cursorSamplesRef = useRef<DragSample[]>([])
+  const cursorPollHandleRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const isThrowingRef = useRef(false)
   const lastPanelClosedAtRef = useRef(0)
 
@@ -609,8 +618,20 @@ export default function App() {
           if (fresh) boundsRef.current = fresh
 
           const currentPos = await appWindow.outerPosition()
-          const samples = dragSamplesRef.current
+          // Prefer the cursor samples (real hand motion at 60Hz); fall back to
+          // window-onMoved samples if cursor polling produced too few entries
+          // (e.g. drag was shorter than one poll tick). The poll keeps running
+          // during the post-onMoved debounce wait, so we drop any samples that
+          // landed AFTER the user actually released (≈ the last onMoved time).
+          stopDragCursorPoll()
+          const cursorSamplesAll = cursorSamplesRef.current
+          cursorSamplesRef.current = []
+          const windowSamples = dragSamplesRef.current
           dragSamplesRef.current = []
+          const releaseAt = Date.now() - DRAG_END_DEBOUNCE_MS + 24
+          const cursorSamples = cursorSamplesAll.filter((s) => s.t <= releaseAt)
+          const samples =
+            cursorSamples.length >= 2 ? cursorSamples : windowSamples
           const launch = computeThrowVelocity(samples)
 
           if (launch.speed >= THROW_MIN_LAUNCH_PX_PER_SEC) {
@@ -672,6 +693,10 @@ export default function App() {
       if (oneShotTimerRef.current) clearTimeout(oneShotTimerRef.current)
       if (clickTimerRef.current) clearTimeout(clickTimerRef.current)
       if (loginHintTimerRef.current) clearTimeout(loginHintTimerRef.current)
+      if (cursorPollHandleRef.current !== null) {
+        clearInterval(cursorPollHandleRef.current)
+        cursorPollHandleRef.current = null
+      }
       unlistenMoved?.()
     }
   }, [])
@@ -1497,6 +1522,51 @@ export default function App() {
     }
   }
 
+  // Stops the per-frame cursor sampler that runs during a drag. Safe to call
+  // even when the poll isn't active.
+  function stopDragCursorPoll() {
+    if (cursorPollHandleRef.current !== null) {
+      clearInterval(cursorPollHandleRef.current)
+      cursorPollHandleRef.current = null
+    }
+  }
+
+  // Samples real cursor position at ~60Hz while the user is dragging the pet.
+  // The OS coalesces window-onMoved events during a native drag, so we read
+  // the actual cursor (what the user's hand is doing) to compute an accurate
+  // release velocity. Samples older than ~260ms are dropped.
+  function startDragCursorPoll() {
+    stopDragCursorPoll()
+    cursorSamplesRef.current = []
+    let inFlight = false
+    const tick = async () => {
+      if (inFlight) return
+      inFlight = true
+      try {
+        const cursor = await invoke<CursorTuple>('get_cursor_position')
+        if (cursor) {
+          const t = Date.now()
+          cursorSamplesRef.current.push({ t, x: cursor[0], y: cursor[1] })
+          if (cursorSamplesRef.current.length > 40) {
+            cursorSamplesRef.current.splice(0, cursorSamplesRef.current.length - 40)
+          }
+          while (
+            cursorSamplesRef.current.length > 2 &&
+            t - cursorSamplesRef.current[0].t > 260
+          ) {
+            cursorSamplesRef.current.shift()
+          }
+        }
+      } catch {
+        // get_cursor_position can fail transiently between monitors; skip.
+      } finally {
+        inFlight = false
+      }
+    }
+    cursorPollHandleRef.current = setInterval(tick, DRAG_CURSOR_POLL_MS)
+    void tick()
+  }
+
   // ── Pet click vs drag ──
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button !== 0) return
@@ -1513,6 +1583,7 @@ export default function App() {
     if (Math.abs(dx) > DRAG_MOVE_THRESHOLD_PX || Math.abs(dy) > DRAG_MOVE_THRESHOLD_PX) {
       dragStartedRef.current = true
       lastUserActionAtRef.current = Date.now()
+      startDragCursorPoll()
       try {
         await appWindow.startDragging()
       } catch (err) {
