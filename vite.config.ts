@@ -32,6 +32,7 @@ export default defineConfig({
         gacha: resolve(__dirname, 'gacha.html'),
         screenshot: resolve(__dirname, 'screenshot.html'),
         team_room: resolve(__dirname, 'team_room.html'),
+        profile: resolve(__dirname, 'profile.html'),
       },
     },
   },

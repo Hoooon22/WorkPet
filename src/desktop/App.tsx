@@ -9,7 +9,7 @@ import PetSprite from './components/PetSprite'
 import PetSpeechBubble from './components/PetSpeechBubble'
 import PetQuestionInput from './components/PetQuestionInput'
 import type { PetAction } from './components/petActions'
-import { askQuestion } from '../shared/api/gemini'
+import { askQuestion, extractMemory } from '../shared/api/gemini'
 import { getGeminiKey, geminiErrorMessage } from './panel/panels/geminiHelpers'
 import type {
   BriefingPayload,
@@ -23,7 +23,14 @@ import type {
 } from '../shared/types'
 import { EMPTY_BRIEFING, IDLE_FOCUS_TIMER } from '../shared/types'
 import { isLottiePetId, isPetId } from '../shared/petCatalog'
-import { getValue, setValue, subscribeStorage, KEYS } from '../shared/storage'
+import {
+  getValue,
+  setValue,
+  subscribeStorage,
+  KEYS,
+  type UserProfile,
+  type PetMemoryEntry,
+} from '../shared/storage'
 import {
   signIn,
   signOut,
@@ -542,6 +549,21 @@ export default function App() {
       register(
         await listen('orbit:fetch-now', async () => {
           void fetchNow().catch(() => {})
+        }),
+      )
+      register(
+        await listen('orbit:open-profile', async () => {
+          void invoke('open_profile').catch(() => {})
+        }),
+      )
+      register(
+        await listen('orbit:clear-memory', async () => {
+          try {
+            await setValue<PetMemoryEntry[]>(KEYS.PET_MEMORY, [])
+            showBubble('🧠 메모리를 비웠어요', 2200)
+          } catch (err) {
+            console.warn('[orbit] clear memory failed', err)
+          }
         }),
       )
       register(
@@ -1329,11 +1351,35 @@ export default function App() {
         playAction('surprise', 2500)
         return
       }
-      const answer = await askQuestion(q, key)
+      const profile = await getValue<UserProfile>(KEYS.USER_PROFILE)
+      const memoryEntries = (await getValue<PetMemoryEntry[]>(KEYS.PET_MEMORY)) ?? []
+      const recentMemories = memoryEntries.slice(-20).map((m) => m.text)
+
+      const answer = await askQuestion(q, key, {
+        petName: activePet?.name,
+        userProfile: profile?.text,
+        memories: recentMemories,
+      })
       setBubbleMessage(null)
       setStickyBubble(answer.trim() || '음… 답을 찾지 못했어요.')
       setQuestionDraft('')
       playAction('smile', 2500)
+
+      // Fire-and-forget memory extraction so the answer shows immediately.
+      // We re-read the current list inside to avoid clobbering concurrent edits.
+      void (async () => {
+        try {
+          const memo = await extractMemory(q, answer, key)
+          if (!memo) return
+          const current = (await getValue<PetMemoryEntry[]>(KEYS.PET_MEMORY)) ?? []
+          const next: PetMemoryEntry[] = [...current, { text: memo, savedAt: Date.now() }]
+          // Cap at 100 entries to keep prompt size + storage bounded.
+          const trimmed = next.length > 100 ? next.slice(next.length - 100) : next
+          await setValue(KEYS.PET_MEMORY, trimmed)
+        } catch {
+          // Memory extraction is best-effort; swallow errors silently.
+        }
+      })()
     } catch (err) {
       const code = err instanceof Error ? err.message : String(err)
       setBubbleMessage(null)

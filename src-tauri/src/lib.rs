@@ -511,6 +511,36 @@ async fn close_gacha(app: AppHandle) -> Result<(), String> {
 const TEAM_ROOM_WIDTH: u32 = 900;
 const TEAM_ROOM_HEIGHT: u32 = 560;
 
+const PROFILE_WIDTH: u32 = 720;
+const PROFILE_HEIGHT: u32 = 500;
+
+#[tauri::command]
+async fn open_profile(app: AppHandle) -> Result<(), String> {
+    if let Some(w) = app.get_webview_window("profile") {
+        let _ = w.show();
+        let _ = w.set_focus();
+        return Ok(());
+    }
+    let win = WebviewWindowBuilder::new(
+        &app,
+        "profile",
+        WebviewUrl::App("profile.html".into()),
+    )
+    .title("프로필 & 메모리")
+    .inner_size(PROFILE_WIDTH as f64, PROFILE_HEIGHT as f64)
+    .min_inner_size(560.0, 360.0)
+    .decorations(false)
+    .transparent(false)
+    .always_on_top(false)
+    .resizable(true)
+    .accept_first_mouse(true)
+    .visible(true)
+    .build()
+    .map_err(|e| format!("profile build: {e}"))?;
+    let _ = win.set_focus();
+    Ok(())
+}
+
 #[tauri::command]
 async fn open_team_room(app: AppHandle) -> Result<(), String> {
     if let Some(w) = app.get_webview_window("team_room") {
@@ -790,6 +820,7 @@ pub fn run() {
             open_gacha,
             close_gacha,
             open_team_room,
+            open_profile,
             open_screenshot_overlay,
             close_screenshot_overlay,
             capture_region,
@@ -1061,6 +1092,9 @@ fn build_tray_menu(app: &AppHandle) -> Result<tauri::menu::Menu<tauri::Wry>, Box
         .text("gacha:open", "가챠 열기")
         .text("brief:fetch", "브리핑 새로고침")
         .separator()
+        .text("profile:open", "프로필 설정")
+        .text("memory:clear", "메모리 비우기")
+        .separator()
         .item(&pause_item)
         .item(&dismiss_item)
         .separator()
@@ -1110,6 +1144,12 @@ fn build_tray(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
                 }
                 "gacha:open" => {
                     let _ = app.emit("orbit:open-gacha", ());
+                }
+                "profile:open" => {
+                    let _ = app.emit("orbit:open-profile", ());
+                }
+                "memory:clear" => {
+                    let _ = app.emit("orbit:clear-memory", ());
                 }
                 "brief:fetch" => {
                     let _ = app.emit("orbit:fetch-now", ());

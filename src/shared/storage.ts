@@ -71,4 +71,16 @@ export const KEYS = {
   USAGE_HISTORY: 'usage:history',
   USAGE_SUMMARY_LAST_FIRED: 'usage:summary_last_fired',
   PANEL_FOCUS_INTENT: 'panel:focus_intent',
+  USER_PROFILE: 'user:profile',
+  PET_MEMORY: 'pet:memory',
 } as const
+
+export type UserProfile = {
+  text: string
+  updatedAt: number
+}
+
+export type PetMemoryEntry = {
+  text: string
+  savedAt: number
+}

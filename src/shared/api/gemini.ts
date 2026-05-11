@@ -44,9 +44,60 @@ export async function summarizePage(pageText: string, apiKey: string): Promise<s
   return callGeminiApi(prompt, apiKey)
 }
 
-export async function askQuestion(question: string, apiKey: string): Promise<string> {
+export type AskContext = {
+  petName?: string
+  userProfile?: string
+  memories?: string[]
+}
+
+export async function askQuestion(
+  question: string,
+  apiKey: string,
+  context?: AskContext,
+): Promise<string> {
+  const sections: string[] = []
+
+  if (context?.petName) {
+    sections.push(`너는 사용자의 데스크톱 펫 "${context.petName}"이다.`)
+  }
+  if (context?.userProfile && context.userProfile.trim()) {
+    sections.push(`아래는 사용자가 직접 적어둔 본인 프로필이다:\n${context.userProfile.trim()}`)
+  }
+  if (context?.memories && context.memories.length > 0) {
+    const list = context.memories.map((m) => `- ${m}`).join('\n')
+    sections.push(`아래는 너가 이전 대화에서 기억해둔 메모이다:\n${list}`)
+  }
+
+  const contextBlock = sections.length > 0 ? sections.join('\n\n') + '\n\n' : ''
+
   const prompt =
+    `${contextBlock}` +
     `다음 질문에 대해 간결하게 답변해 주세요. ` +
-    `핵심만 2~4문장으로 답하고, 불필요한 서론이나 부연 설명은 생략해 주세요.\n\n질문: ${question}`
+    `핵심만 2~4문장으로 답하고, 불필요한 서론이나 부연 설명은 생략해 주세요. ` +
+    `프로필이나 메모에 사용자에 대한 정보가 있다면 자연스럽게 반영해 주세요.\n\n질문: ${question}`
   return callGeminiApi(prompt, apiKey)
+}
+
+// Ask Gemini whether this Q&A turn produced any noteworthy fact about the user
+// worth remembering. Returns a short single-line memo, or null if nothing
+// worth saving. Kept intentionally strict to avoid memory bloat.
+export async function extractMemory(
+  question: string,
+  answer: string,
+  apiKey: string,
+): Promise<string | null> {
+  const prompt =
+    `아래는 데스크톱 펫과 사용자의 대화이다.\n\n` +
+    `사용자: ${question}\n` +
+    `펫: ${answer}\n\n` +
+    `이 대화에서 사용자에 대해 새로 알게 된, 앞으로 계속 기억할 가치가 있는 사실이 있는가? ` +
+    `(예: 이름·직업·취향·일정·중요한 관계 등) ` +
+    `있다면 1문장(60자 이내)으로 핵심만 적어라. 사실이 없거나 단순 잡담이면 정확히 "NONE"만 출력하라. ` +
+    `추측, 일반론, 인사말, 답변 내용 자체는 적지 마라.`
+  const raw = await callGeminiApi(prompt, apiKey)
+  const cleaned = raw.trim().replace(/^["'\-•]\s*/, '').replace(/["']$/, '').trim()
+  if (!cleaned) return null
+  if (/^NONE\b/i.test(cleaned)) return null
+  if (cleaned.length > 200) return cleaned.slice(0, 200)
+  return cleaned
 }
