@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { AnimatePresence } from 'framer-motion'
-import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow'
+import { getCurrentWebviewWindow, WebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { currentMonitor, primaryMonitor } from '@tauri-apps/api/window'
 import { PhysicalPosition } from '@tauri-apps/api/dpi'
 import { invoke } from '@tauri-apps/api/core'
@@ -383,6 +383,43 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey)
   }, [stickyBubble, bubbleMessage, asking, panelOpen])
 
+  // ── Auto-dismiss on focus loss to an external app ──
+  // Pet window focus is gained only on direct interaction (cursor pass-through
+  // makes it click-through otherwise). When focus is lost AND the panel webview
+  // didn't pick it up, assume the user moved to another app and dismiss the
+  // bubble / question input / panel together.
+  useEffect(() => {
+    let unlisten: (() => void) | undefined
+    let pending: ReturnType<typeof setTimeout> | null = null
+    ;(async () => {
+      unlisten = await appWindow.onFocusChanged(async ({ payload: focused }) => {
+        if (focused) {
+          if (pending) {
+            clearTimeout(pending)
+            pending = null
+          }
+          return
+        }
+        if (pending) clearTimeout(pending)
+        pending = setTimeout(() => {
+          pending = null
+          void (async () => {
+            const panelWin = await WebviewWindow.getByLabel('panel')
+            const panelFocused = panelWin
+              ? await panelWin.isFocused().catch(() => false)
+              : false
+            if (panelFocused) return
+            dismissTransientUI()
+          })()
+        }, 120)
+      })
+    })()
+    return () => {
+      if (pending) clearTimeout(pending)
+      unlisten?.()
+    }
+  }, [])
+
   // ── Setup: bounds, store, persisted state, onMoved, scheduler ─
   useEffect(() => {
     let unlistenMoved: (() => void) | undefined
@@ -640,6 +677,17 @@ export default function App() {
           if (cancelled) return
           lastPanelClosedAtRef.current = Date.now()
           setPanelOpen(false)
+          // If pet window doesn't pick up focus shortly after panel closed, the
+          // user clicked an external app — also clear any visible bubbles /
+          // asking. Delay so focus has time to settle on pet if that's the
+          // click target.
+          setTimeout(() => {
+            void (async () => {
+              if (cancelled) return
+              const petFocused = await appWindow.isFocused().catch(() => false)
+              if (!petFocused) dismissTransientUI()
+            })()
+          }, 120)
         }),
       )
       register(
@@ -1075,6 +1123,24 @@ export default function App() {
     setOneShotAction(action)
     if (oneShotTimerRef.current) clearTimeout(oneShotTimerRef.current)
     oneShotTimerRef.current = setTimeout(() => setOneShotAction(null), durationMs)
+  }
+
+  function dismissTransientUI() {
+    if (greetingTimerRef.current) {
+      clearTimeout(greetingTimerRef.current)
+      greetingTimerRef.current = null
+    }
+    if (alertBubbleTimerRef.current) {
+      clearTimeout(alertBubbleTimerRef.current)
+      alertBubbleTimerRef.current = null
+    }
+    stickyActionRef.current = null
+    setStickyBubble(null)
+    setBubbleMessage(null)
+    if (askingRef.current) {
+      setAsking(false)
+      setQuestionDraft('')
+    }
   }
 
   async function runUpdateFlow() {
