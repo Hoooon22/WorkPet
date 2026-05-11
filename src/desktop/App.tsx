@@ -1742,7 +1742,7 @@ export default function App() {
             await openPanel()
           })()
         }
-        playAction('surprise', 2500)
+        playAction('surprise', 5000)
         return
       }
       const profile = await getValue<UserProfile>(KEYS.USER_PROFILE)
@@ -1762,7 +1762,7 @@ export default function App() {
       setBubbleMessage(null)
       setStickyBubble(answer.trim() || '음… 답을 찾지 못했어요.')
       setQuestionDraft('')
-      playAction('smile', 2500)
+      playAction('smile', 5000)
 
       // Fire-and-forget memory extraction so the answer shows immediately.
       // We re-read the current list inside to avoid clobbering concurrent edits.
@@ -1783,7 +1783,7 @@ export default function App() {
       const code = err instanceof Error ? err.message : String(err)
       setBubbleMessage(null)
       setStickyBubble(llmErrorMessage(code, 0))
-      playAction('cry', 2500)
+      playAction('cry', 5000)
     } finally {
       setAskLoading(false)
       // Clear lingering 'think' only — don't overwrite the reaction (smile/surprise/cry)
