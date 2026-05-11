@@ -331,6 +331,10 @@ export default function App() {
   const [petKind, setPetKind] = useState<PetId>('pico')
   const [petSize, setPetSize] = useState<PetSize>('medium')
   const [wanderPaused, setWanderPaused] = useState(false)
+  // While the user is physically dragging the pet, we want zero internal
+  // motion (no walk gait, no idle bob, no Lottie loop). Cleared as soon as
+  // the drag-end debounce kicks the throw / fall sequence in.
+  const [isHeld, setIsHeld] = useState(false)
 
   // Orchestrator state
   const [petState, setPetState] = useState<PetState>('idle')
@@ -610,6 +614,10 @@ export default function App() {
 
         if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
         saveTimerRef.current = setTimeout(async () => {
+          // The user has released — un-freeze the pet so throw/fall physics
+          // can move it. (The 'surprise' face is still set; it'll persist
+          // through flight and be replaced by 'tumble' on landing.)
+          setIsHeld(false)
           // Drag may have crossed monitors — recompute bounds against the
           // monitor the pet is on now so it adopts that screen as its new home.
           const fresh = await loadScreenBounds(PET_SIZE_DIMS[petSizeRef.current].sprite)
@@ -676,6 +684,11 @@ export default function App() {
           } else if (currentPos.y !== b.groundY || targetX !== currentPos.x) {
             await setWindowPosition(targetX, b.groundY)
           }
+
+          // Clear the held 'surprise' so the pet returns to idle. The throw
+          // path handles its own action transition via playAction('tumble'),
+          // so this only matters for the low-velocity fall path.
+          setOneShotAction((prev) => (prev === 'surprise' ? null : prev))
 
           await setValue(KEYS.WINDOW_POSITION, { x: targetX, y: b.groundY })
           void emit('orbit:pet-moved', { x: targetX, y: b.groundY })
@@ -1583,6 +1596,15 @@ export default function App() {
     if (Math.abs(dx) > DRAG_MOVE_THRESHOLD_PX || Math.abs(dy) > DRAG_MOVE_THRESHOLD_PX) {
       dragStartedRef.current = true
       lastUserActionAtRef.current = Date.now()
+      // Freeze the pet's internal animation while held: surprise face, no
+      // walk gait, paused Lottie. Cleared at drag-end so the throw/fall
+      // takes over visuals.
+      setIsHeld(true)
+      setOneShotAction('surprise')
+      if (oneShotTimerRef.current) {
+        clearTimeout(oneShotTimerRef.current)
+        oneShotTimerRef.current = null
+      }
       startDragCursorPoll()
       try {
         await appWindow.startDragging()
@@ -1858,8 +1880,8 @@ export default function App() {
             action={effectiveAction}
             size={spriteSize}
             direction={direction}
-            walking={effectiveAction === 'walk'}
-            paused={wanderPaused}
+            walking={effectiveAction === 'walk' && !isHeld}
+            paused={wanderPaused || isHeld}
             onFrame={(f) => {
               currentLottieFrameRef.current = f
             }}
