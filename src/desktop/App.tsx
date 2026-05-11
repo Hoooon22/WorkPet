@@ -385,6 +385,9 @@ export default function App() {
   // window-onMoved during a native drag.
   const cursorSamplesRef = useRef<DragSample[]>([])
   const cursorPollHandleRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  // Last time the OS told us the window moved (≈ last drag movement). Used to
+  // cut off cursor samples that landed after the user stopped dragging.
+  const lastOnMovedAtRef = useRef(0)
   const isThrowingRef = useRef(false)
   const lastPanelClosedAtRef = useRef(0)
 
@@ -593,6 +596,7 @@ export default function App() {
         if (isRecentProgrammatic()) return
         if (isThrowingRef.current) return
         lastUserActionAtRef.current = Date.now()
+        lastOnMovedAtRef.current = Date.now()
 
         // Collect a short trailing buffer of drag samples so we can read the
         // release velocity when the debounce fires. Old samples are dropped to
@@ -613,7 +617,22 @@ export default function App() {
         void emit('orbit:pet-moved', { x: payload.x, y: payload.y })
 
         if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
-        saveTimerRef.current = setTimeout(async () => {
+        saveTimerRef.current = setTimeout(async function recheckOrEnd() {
+          // Mid-drag pauses (user holding the pet still in the air) would
+          // otherwise trip our onMoved-silence debounce and launch the throw
+          // before they let go. Poll the OS for the actual left-mouse-button
+          // state and re-defer while it's still pressed.
+          try {
+            const pressed = await invoke<boolean>('is_mouse_pressed')
+            if (pressed) {
+              saveTimerRef.current = setTimeout(recheckOrEnd, 60)
+              return
+            }
+          } catch {
+            // Fail-safe: if the OS query errors we fall through to the
+            // existing behavior rather than getting stuck holding the pet.
+          }
+
           // The user has released — un-freeze the pet so throw/fall physics
           // can move it. (The 'surprise' face is still set; it'll persist
           // through flight and be replaced by 'tumble' on landing.)
@@ -636,7 +655,10 @@ export default function App() {
           cursorSamplesRef.current = []
           const windowSamples = dragSamplesRef.current
           dragSamplesRef.current = []
-          const releaseAt = Date.now() - DRAG_END_DEBOUNCE_MS + 24
+          // The user could have been pausing for a while before releasing —
+          // anchor the cutoff to the LAST window move (real drag movement)
+          // so paused / post-release samples don't dilute the launch velocity.
+          const releaseAt = (lastOnMovedAtRef.current || Date.now()) + 24
           const cursorSamples = cursorSamplesAll.filter((s) => s.t <= releaseAt)
           const samples =
             cursorSamples.length >= 2 ? cursorSamples : windowSamples

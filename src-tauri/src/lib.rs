@@ -83,6 +83,7 @@ fn get_frontmost_app() -> Option<String> {
 #[link(name = "CoreGraphics", kind = "framework")]
 extern "C" {
     fn CGEventSourceSecondsSinceLastEventType(source: u32, event_type: u32) -> f64;
+    fn CGEventSourceButtonState(source: u32, button: u32) -> u8;
 }
 
 #[cfg(target_os = "macos")]
@@ -117,6 +118,38 @@ fn idle_seconds_impl() -> f64 {
 #[tauri::command]
 fn get_idle_seconds() -> f64 {
     idle_seconds_impl()
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Left mouse button physical state. Used by the pet drag to tell whether
+// the user has actually released the mouse — `appWindow.startDragging()`
+// gives no completion signal, and onMoved silence is unreliable because
+// the user can pause mid-drag while still holding the button.
+// macOS: CGEventSourceButtonState(HID, left).
+// Windows: GetAsyncKeyState(VK_LBUTTON) high bit.
+// ─────────────────────────────────────────────────────────────────────────
+
+#[cfg(target_os = "macos")]
+fn is_mouse_pressed_impl() -> bool {
+    // kCGEventSourceStateHIDSystemState = 1, kCGMouseButtonLeft = 0
+    unsafe { CGEventSourceButtonState(1, 0) != 0 }
+}
+
+#[cfg(target_os = "windows")]
+fn is_mouse_pressed_impl() -> bool {
+    use windows_sys::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_LBUTTON};
+    let state = unsafe { GetAsyncKeyState(VK_LBUTTON as i32) };
+    (state as u16) & 0x8000 != 0
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+fn is_mouse_pressed_impl() -> bool {
+    false
+}
+
+#[tauri::command]
+fn is_mouse_pressed() -> bool {
+    is_mouse_pressed_impl()
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -811,6 +844,7 @@ pub fn run() {
             get_cursor_position,
             get_frontmost_app,
             get_idle_seconds,
+            is_mouse_pressed,
             oauth_google_signin,
             oauth_google_refresh,
             oauth_google_revoke,
