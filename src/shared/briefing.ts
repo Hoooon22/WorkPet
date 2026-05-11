@@ -17,6 +17,28 @@ const ALERT_1MIN_MIN = 0
 const ALERT_1MIN_MAX = 2 * 60 * 1000
 const ON_TIME_WINDOW = 90 * 1000
 
+function parseSenderName(from: string): string {
+  const m = from.match(/^\s*(.+?)\s*<.+>\s*$/)
+  const raw = m ? m[1] : from
+  return raw.replace(/^["']|["']$/g, '').trim() || from
+}
+
+function formatEventTime(startTime: string): string {
+  const d = new Date(startTime)
+  if (Number.isNaN(d.getTime())) return ''
+  return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+function describeImminentEvent(evt: CalendarEvent, now: number): string {
+  const msTilStart = new Date(evt.startTime).getTime() - now
+  let timing: string
+  if (msTilStart > ALERT_5MIN_MAX) timing = '10분 후 시작해요!'
+  else if (msTilStart > ALERT_1MIN_MAX) timing = '5분 후 시작해요!'
+  else if (msTilStart > 0) timing = '곧 시작해요! (1분 이내)'
+  else timing = '지금 시작됐어요!'
+  return `📅 "${evt.title}" ${timing}`
+}
+
 interface EventAlertState {
   tenMin?: boolean
   fiveMin?: boolean
@@ -89,21 +111,17 @@ export async function fetchBriefingData(): Promise<PolledAlert | null> {
   if (eventsToNotify.length === 0 && newEmails.length === 0) return null
 
   let summary = ''
-  if (eventsToNotify.length > 0 && newEmails.length > 0) {
-    summary = `일정 알림 ${eventsToNotify.length}개, 새 메일 ${newEmails.length}개`
-  } else if (eventsToNotify.length > 0) {
+  if (eventsToNotify.length > 0) {
     const evt = eventsToNotify[0]
-    const startMs = new Date(evt.startTime).getTime()
-    const msTilStart = startMs - now
-    if (msTilStart > ALERT_5MIN_MAX) summary = `"${evt.title}" 10분 후 시작해요!`
-    else if (msTilStart > ALERT_1MIN_MAX) summary = `"${evt.title}" 5분 후 시작해요!`
-    else if (msTilStart > 0) summary = `"${evt.title}" 곧 시작해요! (1분 이내)`
-    else summary = `"${evt.title}" 지금 시작됐어요!`
+    const extras = eventsToNotify.length - 1 + newEmails.length
+    summary = describeImminentEvent(evt, now) + (extras > 0 ? ` 외 ${extras}건` : '')
   } else {
+    const first = newEmails[0]
+    const sender = parseSenderName(first.from)
     summary =
       newEmails.length === 1
-        ? `"${newEmails[0].subject}" 새 메일이 도착했어요`
-        : `새 메일 ${newEmails.length}개가 도착했어요`
+        ? `✉️ ${sender}: "${first.subject}"`
+        : `✉️ ${sender}: "${first.subject}" 외 ${newEmails.length - 1}건`
   }
 
   return {
@@ -155,10 +173,12 @@ export async function handleNewEmailViaHistory(): Promise<BriefingPayload | null
     await showNotification('새 메일이 도착했어요!', `${email.from}: ${email.subject}`)
   }
 
+  const first = newEmails[0]
+  const sender = parseSenderName(first.from)
   const summary =
     newEmails.length === 1
-      ? `"${newEmails[0].subject}" 새 메일이 도착했어요`
-      : `새 메일 ${newEmails.length}개가 도착했어요`
+      ? `✉️ ${sender}: "${first.subject}"`
+      : `✉️ ${sender}: "${first.subject}" 외 ${newEmails.length - 1}건`
 
   return {
     urgent: true,
@@ -193,17 +213,16 @@ export async function checkForNewCalendarEvents(): Promise<BriefingPayload | nul
   await setValue(KEYS.NOTIFIED_NEW_EVENT_IDS, allNotifiedIds)
 
   for (const evt of newEvents) {
-    const d = new Date(evt.startTime)
-    const dateStr = `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(
-      d.getMinutes(),
-    ).padStart(2, '0')}`
+    const dateStr = formatEventTime(evt.startTime)
     await showNotification('새 일정이 추가됐어요!', `"${evt.title}" — ${dateStr}`)
   }
 
+  const firstEvt = newEvents[0]
+  const firstDateStr = formatEventTime(firstEvt.startTime)
   const summary =
     newEvents.length === 1
-      ? `"${newEvents[0].title}" 새 일정이 추가됐어요`
-      : `새 일정 ${newEvents.length}개가 추가됐어요`
+      ? `📅 새 일정 "${firstEvt.title}" — ${firstDateStr}`
+      : `📅 새 일정 "${firstEvt.title}" — ${firstDateStr} 외 ${newEvents.length - 1}건`
 
   return {
     urgent: true,

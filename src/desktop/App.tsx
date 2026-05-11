@@ -924,15 +924,19 @@ export default function App() {
     showBubble('모든 알림을 확인했어요 😊', 3000)
   }, [briefing, petState])
 
-  // ── Alert bubble auto-show 5s ──
+  // ── Alert bubble auto-show ──
   useEffect(() => {
     if (alertBubbleTimerRef.current) clearTimeout(alertBubbleTimerRef.current)
     if (petState === 'alert' && !panelOpen) {
-      const summary = liveSummary(briefing)
+      // urgent 알림은 briefing.summary에 발신자·제목·일정 시간이 담겨 있어 그대로 보여준다.
+      // 수동 새로고침으로 인한 비-urgent 상태는 집계 요약을 사용한다.
+      const detailed = briefing.urgent && briefing.summary
+      const summary = detailed ? briefing.summary : liveSummary(briefing)
+      const duration = detailed ? 6500 : 5000
       setBubbleMessage(summary)
       alertBubbleTimerRef.current = setTimeout(() => {
         setBubbleMessage((prev) => (prev === summary ? null : prev))
-      }, 5000)
+      }, duration)
     }
     return () => {
       if (alertBubbleTimerRef.current) clearTimeout(alertBubbleTimerRef.current)
