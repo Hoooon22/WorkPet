@@ -1,48 +1,103 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { getValue, setValue, deleteValue, KEYS } from '../../../shared/storage'
+import { LLM_PROVIDER_LABELS, type LLMProvider } from '../../../shared/api/llm'
 
 interface Props {
   signedIn: boolean
   email: string | null
   action: (type: string, payload?: unknown) => void
-  focusGeminiSignal?: number
+  focusKeySignal?: number
 }
 
-export default function SettingsTab({ signedIn, email, action, focusGeminiSignal }: Props) {
-  const [geminiKey, setGeminiKey] = useState('')
-  const [geminiExists, setGeminiExists] = useState(false)
-  const [geminiSaved, setGeminiSaved] = useState(false)
-  const geminiInputRef = useRef<HTMLInputElement | null>(null)
+const PROVIDER_OPTIONS: LLMProvider[] = ['gemini', 'openai', 'anthropic', 'grok', 'compat']
+
+const PROVIDER_HINT: Record<LLMProvider, string> = {
+  gemini: 'Google AI Studio에서 발급 (aistudio.google.com/app/apikey)',
+  openai: 'platform.openai.com/api-keys',
+  anthropic: 'console.anthropic.com/settings/keys',
+  grok: 'console.x.ai',
+  compat: 'OpenAI Chat Completions 호환 엔드포인트 (Ollama, LM Studio 등)',
+}
+
+export default function SettingsTab({ signedIn, email, action, focusKeySignal }: Props) {
+  const [provider, setProvider] = useState<LLMProvider>('gemini')
+  const [apiKey, setApiKey] = useState('')
+  const [compatBaseUrl, setCompatBaseUrl] = useState('')
+  const [compatModel, setCompatModel] = useState('')
+  const [keyExists, setKeyExists] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const keyInputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
-    if (!focusGeminiSignal) return
-    const el = geminiInputRef.current
+    if (!focusKeySignal) return
+    const el = keyInputRef.current
     if (!el) return
     el.scrollIntoView({ behavior: 'smooth', block: 'center' })
     el.focus()
-  }, [focusGeminiSignal])
+  }, [focusKeySignal])
 
   useEffect(() => {
     ;(async () => {
-      const k = await getValue<string>(KEYS.GEMINI_API_KEY)
-      setGeminiExists(!!k)
+      const savedProvider = await getValue<string>(KEYS.LLM_PROVIDER)
+      if (savedProvider && (PROVIDER_OPTIONS as string[]).includes(savedProvider)) {
+        setProvider(savedProvider as LLMProvider)
+      }
+      const savedKey = await getValue<string>(KEYS.LLM_API_KEY)
+      setKeyExists(!!savedKey)
+      if (savedProvider === 'compat') {
+        setCompatBaseUrl((await getValue<string>(KEYS.LLM_COMPAT_BASE_URL)) ?? '')
+        setCompatModel((await getValue<string>(KEYS.LLM_COMPAT_MODEL)) ?? '')
+      }
     })()
   }, [])
 
-  const saveGemini = async () => {
-    const trimmed = geminiKey.trim()
-    if (!trimmed) return
-    await setValue(KEYS.GEMINI_API_KEY, trimmed)
-    setGeminiExists(true)
-    setGeminiKey('')
-    setGeminiSaved(true)
-    setTimeout(() => setGeminiSaved(false), 2500)
+  // 공급자 전환 시: 입력 폼은 비우되, 저장은 사용자가 저장 버튼을 누를 때만 한다.
+  // 활성화된 공급자가 실제로 바뀌는 것은 저장 시점.
+  const handleProviderChange = (next: LLMProvider) => {
+    setProvider(next)
+    setApiKey('')
+    setSaved(false)
+    if (next !== 'compat') {
+      setCompatBaseUrl('')
+      setCompatModel('')
+    }
   }
 
-  const removeGemini = async () => {
-    await deleteValue(KEYS.GEMINI_API_KEY)
-    setGeminiExists(false)
+  const canSave = (() => {
+    if (!apiKey.trim()) return false
+    if (provider === 'compat') {
+      return !!compatBaseUrl.trim() && !!compatModel.trim()
+    }
+    return true
+  })()
+
+  // "활성화 키만 보관" — 새 공급자 키를 저장할 때 이전 compat 부가 필드까지 깨끗이 정리한다.
+  const saveConfig = async () => {
+    if (!canSave) return
+    await setValue(KEYS.LLM_PROVIDER, provider)
+    await setValue(KEYS.LLM_API_KEY, apiKey.trim())
+    if (provider === 'compat') {
+      await setValue(KEYS.LLM_COMPAT_BASE_URL, compatBaseUrl.trim())
+      await setValue(KEYS.LLM_COMPAT_MODEL, compatModel.trim())
+    } else {
+      await deleteValue(KEYS.LLM_COMPAT_BASE_URL)
+      await deleteValue(KEYS.LLM_COMPAT_MODEL)
+    }
+    setKeyExists(true)
+    setApiKey('')
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2500)
+  }
+
+  const removeConfig = async () => {
+    await deleteValue(KEYS.LLM_PROVIDER)
+    await deleteValue(KEYS.LLM_API_KEY)
+    await deleteValue(KEYS.LLM_COMPAT_BASE_URL)
+    await deleteValue(KEYS.LLM_COMPAT_MODEL)
+    setKeyExists(false)
+    setCompatBaseUrl('')
+    setCompatModel('')
   }
 
   return (
@@ -127,7 +182,7 @@ export default function SettingsTab({ signedIn, email, action, focusGeminiSignal
         )}
       </div>
 
-      {/* Gemini */}
+      {/* AI provider */}
       <div
         style={{
           background: '#faf5ff',
@@ -146,11 +201,11 @@ export default function SettingsTab({ signedIn, email, action, focusGeminiSignal
           }}
         >
           <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: '#5b21b6' }}>
-            ✨ Gemini AI 설정
+            ✨ AI 공급자 설정
           </p>
-          {geminiExists && (
+          {keyExists && (
             <button
-              onClick={removeGemini}
+              onClick={removeConfig}
               style={{
                 all: 'unset',
                 cursor: 'pointer',
@@ -166,14 +221,84 @@ export default function SettingsTab({ signedIn, email, action, focusGeminiSignal
             </button>
           )}
         </div>
+
+        <select
+          value={provider}
+          onChange={(e) => handleProviderChange(e.target.value as LLMProvider)}
+          style={{
+            width: '100%',
+            boxSizing: 'border-box',
+            border: '1px solid #ddd6fe',
+            borderRadius: 7,
+            padding: '6px 9px',
+            fontSize: 11,
+            color: '#3b0764',
+            background: '#fff',
+            outline: 'none',
+            marginBottom: 6,
+            cursor: 'pointer',
+          }}
+        >
+          {PROVIDER_OPTIONS.map((p) => (
+            <option key={p} value={p}>
+              {LLM_PROVIDER_LABELS[p]}
+            </option>
+          ))}
+        </select>
+
+        <p style={{ margin: '0 0 8px', fontSize: 10, color: '#7c3aed' }}>
+          {PROVIDER_HINT[provider]}
+        </p>
+
+        {provider === 'compat' && (
+          <>
+            <input
+              type="text"
+              value={compatBaseUrl}
+              onChange={(e) => setCompatBaseUrl(e.target.value)}
+              placeholder="Base URL (예: http://localhost:11434/v1)"
+              style={{
+                width: '100%',
+                boxSizing: 'border-box',
+                border: '1px solid #ddd6fe',
+                borderRadius: 7,
+                padding: '6px 9px',
+                fontSize: 11,
+                color: '#3b0764',
+                background: '#fff',
+                outline: 'none',
+                marginBottom: 6,
+              }}
+            />
+            <input
+              type="text"
+              value={compatModel}
+              onChange={(e) => setCompatModel(e.target.value)}
+              placeholder="모델명 (예: llama3.2, qwen2.5-coder)"
+              style={{
+                width: '100%',
+                boxSizing: 'border-box',
+                border: '1px solid #ddd6fe',
+                borderRadius: 7,
+                padding: '6px 9px',
+                fontSize: 11,
+                color: '#3b0764',
+                background: '#fff',
+                outline: 'none',
+                marginBottom: 6,
+              }}
+            />
+          </>
+        )}
+
         <div style={{ display: 'flex', gap: 6 }}>
           <input
-            ref={geminiInputRef}
+            ref={keyInputRef}
             type="password"
-            value={geminiKey}
-            onChange={(e) => setGeminiKey(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && saveGemini()}
-            placeholder={geminiExists ? '새 API 키로 교체…' : 'AI Studio API 키…'}
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && saveConfig()}
+            placeholder={keyExists ? '새 API 키로 교체…' : 'API 키…'}
             style={{
               flex: 1,
               border: '1px solid #ddd6fe',
@@ -187,13 +312,13 @@ export default function SettingsTab({ signedIn, email, action, focusGeminiSignal
             }}
           />
           <button
-            onClick={saveGemini}
-            disabled={!geminiKey.trim()}
+            onClick={saveConfig}
+            disabled={!canSave}
             style={{
               all: 'unset',
-              cursor: geminiKey.trim() ? 'pointer' : 'default',
-              background: geminiKey.trim() ? '#7c3aed' : '#ede9fe',
-              color: geminiKey.trim() ? '#fff' : '#a78bfa',
+              cursor: canSave ? 'pointer' : 'default',
+              background: canSave ? '#7c3aed' : '#ede9fe',
+              color: canSave ? '#fff' : '#a78bfa',
               fontSize: 11,
               fontWeight: 700,
               padding: '6px 12px',
@@ -203,7 +328,7 @@ export default function SettingsTab({ signedIn, email, action, focusGeminiSignal
             저장
           </button>
         </div>
-        {geminiSaved && (
+        {saved && (
           <p style={{ margin: '6px 0 0', fontSize: 11, color: '#16a34a', fontWeight: 600 }}>
             저장됐어요!
           </p>

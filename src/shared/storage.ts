@@ -47,6 +47,15 @@ export const KEYS = {
   AUTH_ID_TOKEN: 'auth:id_token',
   FOCUS_TIMER_PHASE: 'focus:phase',
   TEAM_ROOM_CODE: 'teamroom:code',
+  // 단일 활성 LLM 공급자. 'gemini' | 'openai' | 'anthropic' | 'grok' | 'compat'.
+  LLM_PROVIDER: 'llm:provider',
+  // 현재 활성 공급자의 API 키. 공급자를 바꿀 때마다 덮어쓴다(활성 키만 보관).
+  LLM_API_KEY: 'llm:api_key',
+  // 'compat' 공급자 전용. 다른 공급자 사용 시에는 비어 있다.
+  LLM_COMPAT_BASE_URL: 'llm:compat_base_url',
+  LLM_COMPAT_MODEL: 'llm:compat_model',
+  // 구버전(0.1.x) 호환용. 다중 공급자 도입 전엔 Gemini 전용 키였고,
+  // 마이그레이션 후엔 삭제된다. 신규 코드에서는 LLM_API_KEY를 사용한다.
   GEMINI_API_KEY: 'gemini:api_key',
   PET_KIND: 'pet:kind',
   PET_SIZE: 'pet:size',

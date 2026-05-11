@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import { translateText } from '../../../shared/api/gemini'
-import { getGeminiKey, geminiErrorMessage } from './geminiHelpers'
+import { translateText } from '../../../shared/api/llm'
+import { getLLMConfig, llmErrorMessage } from './llmHelpers'
 
 const LANGUAGES = [
   { code: '한국어', flag: '🇰🇷' },
@@ -67,14 +67,14 @@ export default function TranslatePanel() {
     setLoading(true)
     setResult(null)
     setError(null)
-    const key = await getGeminiKey()
-    if (!key) {
+    const cfg = await getLLMConfig()
+    if (!cfg) {
       setError('NO_API_KEY')
       setLoading(false)
       return
     }
     try {
-      const out = await translateText(trimmed, sourceLang, targetLang, key)
+      const out = await translateText(trimmed, sourceLang, targetLang, cfg)
       setResult(out)
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
@@ -193,7 +193,7 @@ export default function TranslatePanel() {
             lineHeight: 1.5,
           }}
         >
-          {geminiErrorMessage(error, cooldown)}
+          {llmErrorMessage(error, cooldown)}
         </p>
       )}
     </div>

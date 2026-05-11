@@ -9,8 +9,8 @@ import PetSprite from './components/PetSprite'
 import PetSpeechBubble from './components/PetSpeechBubble'
 import PetQuestionInput from './components/PetQuestionInput'
 import type { PetAction } from './components/petActions'
-import { askQuestion, extractMemory } from '../shared/api/gemini'
-import { getGeminiKey, geminiErrorMessage } from './panel/panels/geminiHelpers'
+import { askQuestion, extractMemory } from '../shared/api/llm'
+import { getLLMConfig, llmErrorMessage } from './panel/panels/llmHelpers'
 import type {
   BriefingPayload,
   CalendarEvent,
@@ -1335,16 +1335,16 @@ export default function App() {
     if (oneShotTimerRef.current) clearTimeout(oneShotTimerRef.current)
 
     try {
-      const key = await getGeminiKey()
-      if (!key) {
+      const cfg = await getLLMConfig()
+      if (!cfg) {
         setBubbleMessage(null)
-        setStickyBubble('🔑 Gemini API 키가 필요해요. 클릭하면 설정 화면으로 이동해요.')
+        setStickyBubble('🔑 AI API 키가 필요해요. 클릭하면 설정 화면으로 이동해요.')
         stickyActionRef.current = () => {
           void (async () => {
             // Write the intent BEFORE opening panel so a fresh panel reads it
             // on mount; Tauri events emitted before the panel's listener is
             // registered get dropped silently.
-            await setValue(KEYS.PANEL_FOCUS_INTENT, 'gemini-key')
+            await setValue(KEYS.PANEL_FOCUS_INTENT, 'llm-key')
             await openPanel()
           })()
         }
@@ -1359,7 +1359,7 @@ export default function App() {
       // 결과(예: 토끼)로 남아 있다. 종족이 일치할 때만 이름을 넘겨, 다른 종족
       // 이름이 프롬프트에 새는 걸 막는다.
       const petName = activePet?.petId === petKind ? activePet?.name : undefined
-      const answer = await askQuestion(q, key, {
+      const answer = await askQuestion(q, cfg, {
         petKind,
         petName,
         userProfile: profile?.text,
@@ -1374,7 +1374,7 @@ export default function App() {
       // We re-read the current list inside to avoid clobbering concurrent edits.
       void (async () => {
         try {
-          const memo = await extractMemory(q, answer, key)
+          const memo = await extractMemory(q, answer, cfg)
           if (!memo) return
           const current = (await getValue<PetMemoryEntry[]>(KEYS.PET_MEMORY)) ?? []
           const next: PetMemoryEntry[] = [...current, { text: memo, savedAt: Date.now() }]
@@ -1388,7 +1388,7 @@ export default function App() {
     } catch (err) {
       const code = err instanceof Error ? err.message : String(err)
       setBubbleMessage(null)
-      setStickyBubble(geminiErrorMessage(code, 0))
+      setStickyBubble(llmErrorMessage(code, 0))
       playAction('cry', 2500)
     } finally {
       setAskLoading(false)

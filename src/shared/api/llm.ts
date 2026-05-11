@@ -1,7 +1,33 @@
 import type { PetId } from '../types'
 
-const GEMINI_MODEL = 'gemini-3-flash-preview'
-const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`
+// 지원하는 LLM 공급자. SettingsTab의 드롭다운 옵션과 1:1 대응한다.
+// 'compat'는 OpenAI Chat Completions 호환 엔드포인트(Ollama, LM Studio,
+// 로컬 vLLM 등)를 위한 일반 항목이며, 사용자가 base URL과 모델을 직접 지정한다.
+export type LLMProvider = 'gemini' | 'openai' | 'anthropic' | 'grok' | 'compat'
+
+export type LLMConfig = {
+  provider: LLMProvider
+  apiKey: string
+  // 'compat'에서만 사용. 다른 공급자에서는 무시된다.
+  baseUrl?: string
+  model?: string
+}
+
+export const LLM_PROVIDER_LABELS: Record<LLMProvider, string> = {
+  gemini: 'Google Gemini',
+  openai: 'OpenAI',
+  anthropic: 'Anthropic Claude',
+  grok: 'xAI Grok',
+  compat: 'OpenAI 호환 (사용자 지정)',
+}
+
+// 공급자별 기본 모델. 'compat'는 사용자가 직접 모델명을 입력한다.
+const DEFAULT_MODELS: Record<Exclude<LLMProvider, 'compat'>, string> = {
+  gemini: 'gemini-3-flash-preview',
+  openai: 'gpt-4o-mini',
+  anthropic: 'claude-haiku-4-5-20251001',
+  grok: 'grok-3-mini',
+}
 
 // 펫 종류 → 한국어 종족 설명. petKind가 컨텍스트로 들어오면 이 표를 보고
 // "너의 종족은 X야" 라인을 만들어 LLM이 종족을 환각하지 않도록 고정한다.
@@ -56,47 +82,121 @@ const PET_BASE_SYSTEM_PROMPT = [
   '- 시키지 않은 잔소리·훈계·과한 응원은 하지 마. 묻는 것에만 답해.',
 ].join('\n')
 
-async function callGeminiApi(prompt: string, apiKey: string): Promise<string> {
-  const res = await fetch(`${GEMINI_ENDPOINT}?key=${apiKey}`, {
+const COMMON_GEN = { maxTokens: 2048, temperature: 0.3 }
+
+function mapStatus(status: number): string {
+  if (status === 429) return 'RATE_LIMIT'
+  if (status === 401 || status === 403) return 'INVALID_API_KEY'
+  if (status === 404) return 'MODEL_NOT_FOUND'
+  if (status === 400) return 'INVALID_REQUEST'
+  return `API_ERROR_${status}`
+}
+
+async function callGemini(prompt: string, cfg: LLMConfig): Promise<string> {
+  const model = DEFAULT_MODELS.gemini
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${cfg.apiKey}`
+  const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { maxOutputTokens: 2048, temperature: 0.3 },
+      generationConfig: { maxOutputTokens: COMMON_GEN.maxTokens, temperature: COMMON_GEN.temperature },
     }),
   })
+  if (!res.ok) throw new Error(mapStatus(res.status))
+  const data = await res.json()
+  return data.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
+}
 
-  if (res.ok) {
-    const data = await res.json()
-    return data.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
+// OpenAI Chat Completions 포맷을 사용하는 공급자들(OpenAI, Grok, compat) 공통 구현.
+async function callOpenAICompatible(
+  prompt: string,
+  apiKey: string,
+  baseUrl: string,
+  model: string,
+): Promise<string> {
+  const url = `${baseUrl.replace(/\/$/, '')}/chat/completions`
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      messages: [{ role: 'user', content: prompt }],
+      temperature: COMMON_GEN.temperature,
+      max_tokens: COMMON_GEN.maxTokens,
+    }),
+  })
+  if (!res.ok) throw new Error(mapStatus(res.status))
+  const data = await res.json()
+  return data.choices?.[0]?.message?.content ?? ''
+}
+
+async function callAnthropic(prompt: string, cfg: LLMConfig): Promise<string> {
+  // Tauri 웹뷰가 표준 fetch를 쓰기 때문에 Anthropic 측에서 CORS를 차단할 수 있다.
+  // 'anthropic-dangerous-direct-browser-access'를 켜면 브라우저 환경에서도 직접 호출이 허용된다.
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': cfg.apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({
+      model: DEFAULT_MODELS.anthropic,
+      max_tokens: COMMON_GEN.maxTokens,
+      temperature: COMMON_GEN.temperature,
+      messages: [{ role: 'user', content: prompt }],
+    }),
+  })
+  if (!res.ok) throw new Error(mapStatus(res.status))
+  const data = await res.json()
+  const block = Array.isArray(data.content) ? data.content.find((c: { type?: string }) => c.type === 'text') : null
+  return block?.text ?? ''
+}
+
+async function callLLM(prompt: string, cfg: LLMConfig): Promise<string> {
+  if (!cfg.apiKey) throw new Error('NO_API_KEY')
+  switch (cfg.provider) {
+    case 'gemini':
+      return callGemini(prompt, cfg)
+    case 'openai':
+      return callOpenAICompatible(prompt, cfg.apiKey, 'https://api.openai.com/v1', DEFAULT_MODELS.openai)
+    case 'grok':
+      return callOpenAICompatible(prompt, cfg.apiKey, 'https://api.x.ai/v1', DEFAULT_MODELS.grok)
+    case 'anthropic':
+      return callAnthropic(prompt, cfg)
+    case 'compat': {
+      const base = cfg.baseUrl?.trim()
+      const model = cfg.model?.trim()
+      if (!base || !model) throw new Error('COMPAT_NOT_CONFIGURED')
+      return callOpenAICompatible(prompt, cfg.apiKey, base, model)
+    }
   }
-
-  if (res.status === 429) throw new Error('RATE_LIMIT')
-  if (res.status === 403) throw new Error('INVALID_API_KEY')
-  if (res.status === 404) throw new Error('MODEL_NOT_FOUND')
-  if (res.status === 400) throw new Error('INVALID_REQUEST')
-  throw new Error(`API_ERROR_${res.status}`)
 }
 
 export async function translateText(
   text: string,
   sourceLang: string,
   targetLang: string,
-  apiKey: string,
+  cfg: LLMConfig,
 ): Promise<string> {
   const prompt =
     `다음 텍스트를 ${sourceLang}에서 ${targetLang}로 자연스럽게 번역해 주세요. ` +
     `번역 결과만 출력하고 다른 설명은 추가하지 마세요.\n\n${text}`
-  return callGeminiApi(prompt, apiKey)
+  return callLLM(prompt, cfg)
 }
 
-export async function summarizePage(pageText: string, apiKey: string): Promise<string> {
+export async function summarizePage(pageText: string, cfg: LLMConfig): Promise<string> {
   const truncated = pageText.slice(0, 8000)
   const prompt =
     `다음은 웹 페이지의 본문 텍스트입니다. ` +
     `핵심 내용을 한국어로 3~5문장으로 요약해 주세요. ` +
     `요약 결과만 출력하고 다른 설명은 추가하지 마세요.\n\n${truncated}`
-  return callGeminiApi(prompt, apiKey)
+  return callLLM(prompt, cfg)
 }
 
 export type AskContext = {
@@ -108,7 +208,7 @@ export type AskContext = {
 
 export async function askQuestion(
   question: string,
-  apiKey: string,
+  cfg: LLMConfig,
   context?: AskContext,
 ): Promise<string> {
   const sections: string[] = [PET_BASE_SYSTEM_PROMPT]
@@ -137,16 +237,15 @@ export async function askQuestion(
     `다음 질문에 대해 간결하게 답변해 주세요. ` +
     `핵심만 2~4문장으로 답하고, 불필요한 서론이나 부연 설명은 생략해 주세요. ` +
     `프로필이나 메모에 사용자에 대한 정보가 있다면 자연스럽게 반영해 주세요.\n\n질문: ${question}`
-  return callGeminiApi(prompt, apiKey)
+  return callLLM(prompt, cfg)
 }
 
-// Ask Gemini whether this Q&A turn produced any noteworthy fact about the user
-// worth remembering. Returns a short single-line memo, or null if nothing
-// worth saving. Kept intentionally strict to avoid memory bloat.
+// 펫과의 Q&A 한 턴에서 사용자에 대해 기억해둘 가치가 있는 사실을 추출한다.
+// 단순 잡담이면 null. 메모리 비대화를 막기 위해 기준을 일부러 빡빡하게 둔다.
 export async function extractMemory(
   question: string,
   answer: string,
-  apiKey: string,
+  cfg: LLMConfig,
 ): Promise<string | null> {
   const prompt =
     `아래는 데스크톱 펫과 사용자의 대화이다.\n\n` +
@@ -156,7 +255,7 @@ export async function extractMemory(
     `(예: 이름·직업·취향·일정·중요한 관계 등) ` +
     `있다면 1문장(60자 이내)으로 핵심만 적어라. 사실이 없거나 단순 잡담이면 정확히 "NONE"만 출력하라. ` +
     `추측, 일반론, 인사말, 답변 내용 자체는 적지 마라.`
-  const raw = await callGeminiApi(prompt, apiKey)
+  const raw = await callLLM(prompt, cfg)
   const cleaned = raw.trim().replace(/^["'\-•]\s*/, '').replace(/["']$/, '').trim()
   if (!cleaned) return null
   if (/^NONE\b/i.test(cleaned)) return null

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { summarizePage } from '../../../shared/api/gemini'
-import { getGeminiKey, geminiErrorMessage } from './geminiHelpers'
+import { summarizePage } from '../../../shared/api/llm'
+import { getLLMConfig, llmErrorMessage } from './llmHelpers'
 
 export default function SummarizePanel() {
   const [text, setText] = useState('')
@@ -14,14 +14,14 @@ export default function SummarizePanel() {
     setLoading(true)
     setResult(null)
     setError(null)
-    const key = await getGeminiKey()
-    if (!key) {
+    const cfg = await getLLMConfig()
+    if (!cfg) {
       setError('NO_API_KEY')
       setLoading(false)
       return
     }
     try {
-      const out = await summarizePage(text, key)
+      const out = await summarizePage(text, cfg)
       setResult(out)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -96,7 +96,7 @@ export default function SummarizePanel() {
             padding: '6px 8px',
           }}
         >
-          {geminiErrorMessage(error, 0)}
+          {llmErrorMessage(error, 0)}
         </p>
       )}
     </div>

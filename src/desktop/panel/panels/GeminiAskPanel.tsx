@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { askQuestion } from '../../../shared/api/gemini'
-import { getGeminiKey, geminiErrorMessage } from './geminiHelpers'
+import { askQuestion } from '../../../shared/api/llm'
+import { getLLMConfig, llmErrorMessage } from './llmHelpers'
 
 export default function GeminiAskPanel() {
   const [question, setQuestion] = useState('')
@@ -14,14 +14,14 @@ export default function GeminiAskPanel() {
     setLoading(true)
     setAnswer(null)
     setError(null)
-    const key = await getGeminiKey()
-    if (!key) {
+    const cfg = await getLLMConfig()
+    if (!cfg) {
       setError('NO_API_KEY')
       setLoading(false)
       return
     }
     try {
-      const out = await askQuestion(question, key)
+      const out = await askQuestion(question, cfg)
       setAnswer(out)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -99,7 +99,7 @@ export default function GeminiAskPanel() {
             padding: '6px 8px',
           }}
         >
-          {geminiErrorMessage(error, 0)}
+          {llmErrorMessage(error, 0)}
         </p>
       )}
     </div>

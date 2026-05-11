@@ -38,7 +38,7 @@ export default function Panel() {
   const [email, setEmail] = useState<string | null>(null)
   const [focusTimer, setFocusTimer] = useState<FocusTimerState>(IDLE_FOCUS_TIMER)
   const [detached, setDetached] = useState(false)
-  const [focusGeminiSignal, setFocusGeminiSignal] = useState(0)
+  const [focusKeySignal, setFocusGeminiSignal] = useState(0)
 
   // Initial load
   useEffect(() => {
@@ -51,7 +51,7 @@ export default function Panel() {
       // Pet may have queued a navigation intent before opening this panel.
       // Read on every fresh mount, then clear so it doesn't re-fire later.
       const intent = await getValue<string>(KEYS.PANEL_FOCUS_INTENT)
-      if (intent === 'gemini-key') {
+      if (intent === 'llm-key') {
         await deleteValue(KEYS.PANEL_FOCUS_INTENT)
         setTab('settings')
         setFocusGeminiSignal((s) => s + 1)
@@ -67,7 +67,7 @@ export default function Panel() {
     ;(async () => {
       off = await subscribeStorage<string>(KEYS.PANEL_FOCUS_INTENT, (val) => {
         if (cancelled) return
-        if (val === 'gemini-key') {
+        if (val === 'llm-key') {
           void deleteValue(KEYS.PANEL_FOCUS_INTENT)
           setTab('settings')
           setFocusGeminiSignal((s) => s + 1)
@@ -312,7 +312,7 @@ export default function Panel() {
             signedIn={signedIn}
             email={email}
             action={action}
-            focusGeminiSignal={focusGeminiSignal}
+            focusKeySignal={focusKeySignal}
           />
         )}
       </div>
