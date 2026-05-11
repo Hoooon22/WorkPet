@@ -137,6 +137,7 @@ export default function ToolsTab({ focusTimer, action }: Props) {
                   all: 'unset',
                   cursor: 'pointer',
                   position: 'relative',
+                  zIndex: isHovered ? 30 : undefined,
                   width: 34,
                   height: 34,
                   flexShrink: 0,
