@@ -258,6 +258,7 @@ export default function App() {
   const lastUserActionAtRef = useRef(0)
   const sleepyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const greetingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const loginHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const alertBubbleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const morningGreetingShownRef = useRef(false)
@@ -430,6 +431,7 @@ export default function App() {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
       if (oneShotTimerRef.current) clearTimeout(oneShotTimerRef.current)
       if (clickTimerRef.current) clearTimeout(clickTimerRef.current)
+      if (loginHintTimerRef.current) clearTimeout(loginHintTimerRef.current)
       unlistenMoved?.()
     }
   }, [])
@@ -539,6 +541,7 @@ export default function App() {
             if (await checkSignedIn()) {
               await signOut()
               setSignedIn(false)
+              if (loginHintTimerRef.current) clearTimeout(loginHintTimerRef.current)
               showBubble('잘 있어요! 또 봐요 👋', 2500)
             } else {
               const { email } = await signIn()
@@ -546,6 +549,7 @@ export default function App() {
               const hour = new Date().getHours()
               const greet = hour < 12 ? '좋은 아침이에요' : '안녕하세요'
               showBubble(`${greet}${email ? `, ${email}` : ''}! 😊`, 3500)
+              scheduleLoginHint(3700)
               void fetchNow().catch(() => {})
             }
           } catch (err) {
@@ -962,6 +966,13 @@ export default function App() {
     greetingTimerRef.current = setTimeout(() => setBubbleMessage(null), durationMs)
   }
 
+  function scheduleLoginHint(afterMs: number) {
+    if (loginHintTimerRef.current) clearTimeout(loginHintTimerRef.current)
+    loginHintTimerRef.current = setTimeout(() => {
+      showBubble('💬 더블클릭하면 뭐든 물어볼 수 있어요', 3500)
+    }, afterMs)
+  }
+
   async function openPanel() {
     const pos = await appWindow.outerPosition()
     await invoke('open_panel', { anchorX: pos.x, anchorY: pos.y })
@@ -1076,6 +1087,7 @@ export default function App() {
             const { email } = await signIn()
             setSignedIn(true)
             showBubble(`반가워요${email ? `, ${email}` : ''}!`, 3000)
+            scheduleLoginHint(3200)
             void fetchNow().catch(() => {})
           } catch (err) {
             console.warn('sign-in failed', err)
@@ -1086,6 +1098,7 @@ export default function App() {
         ;(async () => {
           await signOut()
           setSignedIn(false)
+          if (loginHintTimerRef.current) clearTimeout(loginHintTimerRef.current)
           showBubble('잘 있어요! 또 봐요 👋', 2500)
         })()
         break
