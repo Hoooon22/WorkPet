@@ -106,36 +106,12 @@ export type AskContext = {
   memories?: string[]
 }
 
-// 현재 시각을 "2026년 5월 11일 (월) 오후 4:05" 형태의 한국어 문자열로 만든다.
-// askQuestion 호출 시 매번 새로 계산해 프롬프트에 넣어주지 않으면 LLM이
-// 학습 컷오프 시점을 추측해 엉뚱한 날짜로 답한다.
-function formatNowKo(now: Date = new Date()): string {
-  const date = now.toLocaleDateString('ko-KR', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    weekday: 'short',
-  })
-  const time = now.toLocaleTimeString('ko-KR', {
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-  })
-  return `${date} ${time}`
-}
-
 export async function askQuestion(
   question: string,
   apiKey: string,
   context?: AskContext,
 ): Promise<string> {
   const sections: string[] = [PET_BASE_SYSTEM_PROMPT]
-
-  sections.push(
-    `지금 사용자의 로컬 시각은 ${formatNowKo()}이다. ` +
-      `날짜·요일·시간을 묻거나 시간 감각이 필요한 답을 할 때는 이 값을 기준으로 답하라. ` +
-      `추측한 다른 날짜를 사용하지 마라.`,
-  )
 
   const species = context?.petKind ? PET_SPECIES_KO[context.petKind] : null
   const name = context?.petName?.trim() || (context?.petKind ? PET_DEFAULT_NAMES_KO[context.petKind] : null)
