@@ -257,7 +257,7 @@ export default function App() {
   const boundsRef = useRef<ScreenBounds | null>(null)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastUserActionAtRef = useRef(0)
-  const sleepyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const sleepyTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const greetingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const loginHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const alertBubbleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -839,14 +839,33 @@ export default function App() {
   }, [petState, signedIn])
 
   // ── Sleepy state ──
+  // Poll system idle so real user activity (mouse/keyboard) wakes the pet.
+  // A plain setTimeout fires after 5 minutes of wall-clock time regardless
+  // of whether the user is actively working, so the pet would nap on top of
+  // an actively-used screen and never wake on mouse-move.
   useEffect(() => {
-    if (sleepyTimerRef.current) clearTimeout(sleepyTimerRef.current)
-    setIsSleepy(false)
-    if (petState === 'idle' && !panelOpen && !bubbleMessage) {
-      sleepyTimerRef.current = setTimeout(() => setIsSleepy(true), SLEEPY_TIMEOUT_MS)
+    if (sleepyTimerRef.current) clearInterval(sleepyTimerRef.current)
+    if (petState !== 'idle' || panelOpen || bubbleMessage) {
+      if (isSleepyRef.current) setIsSleepy(false)
+      return
     }
+    let cancelled = false
+    const check = async () => {
+      if (cancelled) return
+      let idle = 0
+      try {
+        idle = await invoke<number>('get_idle_seconds')
+      } catch {
+        return
+      }
+      const shouldSleep = idle * 1000 >= SLEEPY_TIMEOUT_MS
+      if (shouldSleep !== isSleepyRef.current) setIsSleepy(shouldSleep)
+    }
+    void check()
+    sleepyTimerRef.current = setInterval(check, AWAY_POLL_MS)
     return () => {
-      if (sleepyTimerRef.current) clearTimeout(sleepyTimerRef.current)
+      cancelled = true
+      if (sleepyTimerRef.current) clearInterval(sleepyTimerRef.current)
     }
   }, [petState, panelOpen, bubbleMessage])
 
@@ -1194,8 +1213,9 @@ export default function App() {
     setIsAway(false)
     awayStartedAtRef.current = null
     lastUserActionAtRef.current = Date.now()
-    if (sleepyTimerRef.current) clearTimeout(sleepyTimerRef.current)
-    sleepyTimerRef.current = setTimeout(() => setIsSleepy(true), SLEEPY_TIMEOUT_MS)
+    // The sleepy effect's polling interval re-evaluates idle every tick, so
+    // no manual re-arm is needed here — the click resets system idle to ~0
+    // and the next poll naturally keeps isSleepy false until idle climbs again.
     // Explicit "재우기" must also clear here, otherwise every click stays
     // trapped in this wake branch and the next click never opens the panel.
     if (wanderPausedRef.current) {
