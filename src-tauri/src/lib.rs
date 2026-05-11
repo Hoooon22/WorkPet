@@ -22,6 +22,7 @@ struct TrayState {
     wander_paused: Mutex<bool>,
     pet_size: Mutex<String>,
     panel_visible_before_capture: Mutex<bool>,
+    color_picker_capture: Mutex<Option<ColorPickerCapture>>,
 }
 
 impl Default for TrayState {
@@ -32,8 +33,17 @@ impl Default for TrayState {
             wander_paused: Mutex::new(false),
             pet_size: Mutex::new("medium".to_string()),
             panel_visible_before_capture: Mutex::new(false),
+            color_picker_capture: Mutex::new(None),
         }
     }
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ColorPickerCapture {
+    data_url: String,
+    physical_width: u32,
+    physical_height: u32,
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -716,6 +726,47 @@ async fn open_color_picker_overlay(app: AppHandle) -> Result<(), String> {
     let logical_w = mw / scale;
     let logical_h = mh / scale;
 
+    // Capture the primary screen *before* the overlay shows so the magnifier
+    // can render the actual desktop pixels (not the dimmed overlay tint).
+    let capture_origin = (mx, my);
+    let capture = tauri::async_runtime::spawn_blocking(move || -> Result<ColorPickerCapture, String> {
+        use screenshots::Screen;
+        let screens = Screen::all().map_err(|e| format!("screens: {e}"))?;
+        let (ox, oy) = capture_origin;
+        let screen = screens
+            .iter()
+            .find(|s| s.display_info.x == ox && s.display_info.y == oy)
+            .or_else(|| screens.iter().find(|s| s.display_info.is_primary))
+            .or_else(|| screens.first())
+            .cloned()
+            .ok_or_else(|| "no screens".to_string())?;
+        let img = screen.capture().map_err(|e| format!("capture: {e}"))?;
+        let (w, h) = (img.width(), img.height());
+        let raw = img.into_raw();
+        let rgba = image::RgbaImage::from_raw(w, h, raw)
+            .ok_or_else(|| "from_raw failed".to_string())?;
+        let mut buf = Cursor::new(Vec::new());
+        image::DynamicImage::ImageRgba8(rgba)
+            .write_to(&mut buf, image::ImageFormat::Png)
+            .map_err(|e| format!("encode png: {e}"))?;
+        let b64 = general_purpose::STANDARD.encode(buf.into_inner());
+        Ok(ColorPickerCapture {
+            data_url: format!("data:image/png;base64,{b64}"),
+            physical_width: w,
+            physical_height: h,
+        })
+    })
+    .await
+    .map_err(|e| format!("spawn: {e}"))?;
+
+    if let Ok(cap) = capture {
+        if let Some(state) = app.try_state::<TrayState>() {
+            if let Ok(mut g) = state.color_picker_capture.lock() {
+                *g = Some(cap);
+            }
+        }
+    }
+
     let win = WebviewWindowBuilder::new(
         &app,
         "color-picker",
@@ -769,6 +820,11 @@ async fn pick_pixel(x: i32, y: i32) -> Result<String, String> {
     })
     .await
     .map_err(|e| format!("spawn: {e}"))?
+}
+
+#[tauri::command]
+fn take_color_picker_capture(state: tauri::State<'_, TrayState>) -> Option<ColorPickerCapture> {
+    state.color_picker_capture.lock().ok().and_then(|mut g| g.take())
 }
 
 #[tauri::command]
@@ -860,6 +916,7 @@ pub fn run() {
             capture_region,
             open_color_picker_overlay,
             pick_pixel,
+            take_color_picker_capture,
             set_auth_state,
             set_dismissed_state,
             set_wander_paused_state,
