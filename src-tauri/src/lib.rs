@@ -1033,7 +1033,7 @@ fn build_tray_menu(app: &AppHandle) -> Result<tauri::menu::Menu<tauri::Wry>, Box
         .map(|g| *g)
         .unwrap_or(false);
 
-    let pause_item = CheckMenuItemBuilder::new("걷기 일시정지")
+    let pause_item = CheckMenuItemBuilder::new("재우기")
         .id("wander:toggle")
         .checked(wander_paused)
         .build(app)?;

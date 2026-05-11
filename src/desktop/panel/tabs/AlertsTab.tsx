@@ -180,7 +180,7 @@ export default function AlertsTab({ briefing, action }: Props) {
             border: '1px solid #bfdbfe',
           }}
         >
-          🐾 돌아다니기 토글
+          💤 재우기 / 깨우기
         </button>
         <button
           onClick={() => action('return-home')}
