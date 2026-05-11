@@ -350,6 +350,39 @@ export default function App() {
     briefingRef.current = briefing
   }, [briefing])
 
+  // ── Global ESC: dismiss bubble → ask input → panel, in that order ──
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== 'Escape') return
+      if (stickyBubble) {
+        stickyActionRef.current = null
+        setStickyBubble(null)
+        return
+      }
+      if (bubbleMessage) {
+        if (greetingTimerRef.current) {
+          clearTimeout(greetingTimerRef.current)
+          greetingTimerRef.current = null
+        }
+        if (alertBubbleTimerRef.current) {
+          clearTimeout(alertBubbleTimerRef.current)
+          alertBubbleTimerRef.current = null
+        }
+        setBubbleMessage(null)
+        return
+      }
+      if (asking) {
+        cancelAsk()
+        return
+      }
+      if (panelOpen) {
+        void closePanel()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [stickyBubble, bubbleMessage, asking, panelOpen])
+
   // ── Setup: bounds, store, persisted state, onMoved, scheduler ─
   useEffect(() => {
     let unlistenMoved: (() => void) | undefined

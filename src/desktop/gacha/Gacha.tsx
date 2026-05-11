@@ -103,6 +103,15 @@ export default function Gacha() {
     return () => unlisten?.()
   }, [])
 
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== 'Escape') return
+      void invoke('close_gacha').catch(() => {})
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
   function startRoll() {
     setPhase('rolling')
     const picked = rollPet()

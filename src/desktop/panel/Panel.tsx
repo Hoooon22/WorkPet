@@ -152,6 +152,19 @@ export default function Panel() {
     return () => unlisten?.()
   }, [])
 
+  // ESC closes the panel
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== 'Escape') return
+      void (async () => {
+        await emit('orbit:panel-closed')
+        await invoke('close_panel').catch(() => {})
+      })()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
   async function reposition(petX: number, petY: number) {
     const monitorWidth =
       typeof window !== 'undefined' ? window.screen.availWidth : 1920

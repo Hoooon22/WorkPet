@@ -44,6 +44,15 @@ export default function Profile() {
     }
   }, [])
 
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== 'Escape') return
+      void getCurrentWebviewWindow().close().catch(() => {})
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
   const dirty = profileText !== originalProfile
 
   async function handleSave() {

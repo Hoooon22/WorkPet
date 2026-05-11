@@ -44,6 +44,15 @@ export default function TeamRoom() {
     })()
   }, [])
 
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== 'Escape') return
+      void getCurrentWebviewWindow().close().catch(() => {})
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
   const handleEnter = (code: string) => {
     void setValue(KEYS.TEAM_ROOM_CODE, code)
     setRoomCode(code)
