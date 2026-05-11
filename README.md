@@ -261,6 +261,29 @@ WorkPet/
 
 ---
 
+## 로드맵
+
+### 펫 대화에서 Gmail · Calendar 도구 호출 (Function Calling)
+
+현재 펫과의 질문/답변(`askQuestion`)은 펫 시스템 프롬프트·종족·유저 프로필·메모리만 컨텍스트로 넘기며, Gmail/Calendar 데이터는 일절 포함되지 않습니다. 사용자가 "오늘 일정 뭐 있지?", "어제 김부장이 보낸 메일 요약해줘" 같은 질문을 펫에게 직접 던질 수 있도록, Gemini Function Calling으로 다음 도구들을 노출하는 작업을 계획 중입니다.
+
+**도구 후보 (읽기 전용 우선)**
+- `list_today_events()` — 오늘 일정 목록 (이미 `fetchTodayEvents` 존재)
+- `list_upcoming_events(within_hours)` — 임박한 일정
+- `list_unread_emails(limit)` — 안 읽은 메일 헤더
+- `search_emails(query)` — Gmail 검색 연산자 그대로
+- `get_email_body(id)` — 본문 조회 (스코프 확장 필요: `gmail.readonly` 본문까지)
+
+**구현 메모**
+- [src/shared/api/gemini.ts](src/shared/api/gemini.ts)의 `callGeminiApi`를 `tools` 파라미터를 받도록 확장하고, 모델이 `functionCall`을 반환하면 도구를 실행한 뒤 `functionResponse`로 재호출하는 멀티턴 루프를 추가한다.
+- 도구 실행 후 모델이 자연어로 답하는 동안 펫은 `think` 모션을 유지하고, 응답이 오면 기존과 동일하게 말풍선으로 출력한다.
+- 로그인 안 된 상태에서 호출되면 도구가 명확한 에러 메시지를 반환하고, 펫은 "Google 로그인이 필요해요" 류로 안내한다.
+- 일정 등록·메일 발송 등 쓰기 작업은 별도 단계. 추가 시 `calendar.events`, `gmail.send` 스코프를 OAuth 동의 화면에 추가하고, 펫이 실행 전 사용자에게 확인 말풍선을 띄우는 흐름을 별도 설계한다.
+
+**현재 단계**: 계획 수립 (미착수)
+
+---
+
 ## 라이선스
 
 MIT
