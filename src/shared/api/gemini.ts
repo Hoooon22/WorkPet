@@ -1,5 +1,22 @@
+import type { PetId } from '../types'
+
 const GEMINI_MODEL = 'gemini-3-flash-preview'
 const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`
+
+// 펫 종류 → 한국어 종족 설명. petKind가 컨텍스트로 들어오면 이 표를 보고
+// "너의 종족은 X야" 라인을 만들어 LLM이 종족을 환각하지 않도록 고정한다.
+const PET_SPECIES_KO: Record<PetId, string> = {
+  pico: 'Orbit의 마스코트 로봇 캐릭터',
+  cat: '고양이',
+  rabbit: '토끼',
+  hedgehog: '고슴도치',
+  raccoon: '너구리',
+  unicorn: '유니콘',
+  dog: '강아지',
+  panda: '판다',
+  lion: '사자',
+  dragon: '용',
+}
 
 // 사용자에게 노출되지 않는 펫의 기본 시스템 프롬프트.
 // askQuestion 매 호출 시 프롬프트 맨 앞에 자동으로 붙어 펫의 정체성·말투·태도를 고정한다.
@@ -67,6 +84,7 @@ export async function summarizePage(pageText: string, apiKey: string): Promise<s
 }
 
 export type AskContext = {
+  petKind?: PetId
   petName?: string
   userProfile?: string
   memories?: string[]
@@ -79,8 +97,13 @@ export async function askQuestion(
 ): Promise<string> {
   const sections: string[] = [PET_BASE_SYSTEM_PROMPT]
 
-  if (context?.petName) {
-    sections.push(`너는 사용자의 데스크톱 펫 "${context.petName}"이다.`)
+  const species = context?.petKind ? PET_SPECIES_KO[context.petKind] : null
+  if (species && context?.petName) {
+    sections.push(`너의 종족은 ${species}이고, 이름은 "${context.petName}"이야. 다른 동물·종족이라고 답하지 마.`)
+  } else if (species) {
+    sections.push(`너의 종족은 ${species}야. 다른 동물·종족이라고 답하지 마.`)
+  } else if (context?.petName) {
+    sections.push(`너는 사용자의 데스크톱 펫 "${context.petName}"이야.`)
   }
   if (context?.userProfile && context.userProfile.trim()) {
     sections.push(`아래는 사용자가 직접 적어둔 본인 프로필이다:\n${context.userProfile.trim()}`)

@@ -1356,6 +1356,7 @@ export default function App() {
       const recentMemories = memoryEntries.slice(-20).map((m) => m.text)
 
       const answer = await askQuestion(q, key, {
+        petKind,
         petName: activePet?.name,
         userProfile: profile?.text,
         memories: recentMemories,
