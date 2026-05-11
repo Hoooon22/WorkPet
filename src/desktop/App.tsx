@@ -1453,8 +1453,13 @@ export default function App() {
             />
           ) : (
             visibleBubble && (
+              // Stable key: changing the key on every message swap remounts the
+              // bubble inside AnimatePresence, and the exiting old bubble's ref
+              // callback fires with null ~180ms AFTER the new bubble mounted,
+              // wiping out bubbleRef. The cursor pass-through poll then can't
+              // hit-test the bubble and the click passes through the window.
               <PetSpeechBubble
-                key={visibleBubble}
+                key="pet-speech-bubble"
                 ref={bubbleRef}
                 message={visibleBubble}
                 actionable={
