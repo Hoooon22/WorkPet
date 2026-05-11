@@ -36,11 +36,11 @@
 .pico .arm-right { transform: rotate(6deg); }
 
 /* === idle === */
-.pico[data-action="idle"] .body-wrap { animation: pico-bob 3.2s ease-in-out infinite; }
-.pico[data-action="idle"] .antenna-bulb { animation: pico-bulb-soft 2.4s ease-in-out infinite; }
-.pico[data-action="idle"] .antenna-glow { animation: pico-glow-soft 2.4s ease-in-out infinite; }
-.pico[data-action="idle"] .eye { animation: pico-blink 4.5s ease-in-out infinite; transform-origin: center; transform-box: fill-box; }
-.pico[data-action="idle"] .core-pulse { animation: pico-core-pulse 2.6s ease-in-out infinite; }
+.pico[data-action="idle"] .body-wrap { animation: pico-bob 4.8s ease-in-out infinite; }
+.pico[data-action="idle"] .antenna-bulb { animation: pico-bulb-soft 3.6s ease-in-out infinite; }
+.pico[data-action="idle"] .antenna-glow { animation: pico-glow-soft 3.6s ease-in-out infinite; }
+.pico[data-action="idle"] .eye { animation: pico-blink 6.75s ease-in-out infinite; transform-origin: center; transform-box: fill-box; }
+.pico[data-action="idle"] .core-pulse { animation: pico-core-pulse 3.9s ease-in-out infinite; }
 
 @keyframes pico-bob {
   0%, 100% { transform: translateY(0); }
@@ -92,14 +92,14 @@
 }
 
 /* === sleep === */
-.pico[data-action="sleep"] .body-wrap { animation: pico-sleep-breathe 4.2s ease-in-out infinite; }
-.pico[data-action="sleep"] .head { animation: pico-sleep-tilt 4.2s ease-in-out infinite; }
-.pico[data-action="sleep"] .antenna-bulb { animation: pico-bulb-soft 4.2s ease-in-out infinite; }
+.pico[data-action="sleep"] .body-wrap { animation: pico-sleep-breathe 6.3s ease-in-out infinite; }
+.pico[data-action="sleep"] .head { animation: pico-sleep-tilt 6.3s ease-in-out infinite; }
+.pico[data-action="sleep"] .antenna-bulb { animation: pico-bulb-soft 6.3s ease-in-out infinite; }
 .pico[data-action="sleep"] .antenna-glow { opacity: 0.1; }
-.pico[data-action="sleep"] .core-pulse { animation: pico-core-pulse 4.2s ease-in-out infinite; }
-.pico[data-action="sleep"] .zzz-1 { animation: pico-zzz-float 3s ease-in infinite; transform-origin: center; transform-box: fill-box; }
-.pico[data-action="sleep"] .zzz-2 { animation: pico-zzz-float 3s ease-in infinite 1s; transform-origin: center; transform-box: fill-box; }
-.pico[data-action="sleep"] .zzz-3 { animation: pico-zzz-float 3s ease-in infinite 2s; transform-origin: center; transform-box: fill-box; }
+.pico[data-action="sleep"] .core-pulse { animation: pico-core-pulse 6.3s ease-in-out infinite; }
+.pico[data-action="sleep"] .zzz-1 { animation: pico-zzz-float 4.5s ease-in infinite; transform-origin: center; transform-box: fill-box; }
+.pico[data-action="sleep"] .zzz-2 { animation: pico-zzz-float 4.5s ease-in infinite 1.5s; transform-origin: center; transform-box: fill-box; }
+.pico[data-action="sleep"] .zzz-3 { animation: pico-zzz-float 4.5s ease-in infinite 3s; transform-origin: center; transform-box: fill-box; }
 
 @keyframes pico-sleep-breathe {
   0%, 100% { transform: translateY(0) scale(1); }
@@ -116,10 +116,10 @@
 }
 
 /* === alert === */
-.pico[data-action="alert"] .body-wrap { animation: pico-alert-shake 0.18s ease-in-out infinite; }
-.pico[data-action="alert"] .antenna-bulb { animation: pico-alert-flash 0.4s ease-in-out infinite; }
-.pico[data-action="alert"] .antenna-glow { animation: pico-alert-glow 0.4s ease-in-out infinite; }
-.pico[data-action="alert"] .excl { fill: #fbbf24; animation: pico-excl-flash 0.4s ease-in-out infinite; }
+.pico[data-action="alert"] .body-wrap { animation: pico-alert-shake 0.27s ease-in-out infinite; }
+.pico[data-action="alert"] .antenna-bulb { animation: pico-alert-flash 0.6s ease-in-out infinite; }
+.pico[data-action="alert"] .antenna-glow { animation: pico-alert-glow 0.6s ease-in-out infinite; }
+.pico[data-action="alert"] .excl { fill: #fbbf24; animation: pico-excl-flash 0.6s ease-in-out infinite; }
 
 @keyframes pico-alert-shake {
   0%, 100% { transform: translateX(0); }
@@ -140,13 +140,13 @@
 }
 
 /* === smile: little hop & shoulder wiggle === */
-.pico[data-action="smile"] .body-wrap { animation: pico-hop 1.6s ease-in-out infinite; }
-.pico[data-action="smile"] .arm-left { animation: pico-shoulder-wiggle-l 1.6s ease-in-out infinite; }
-.pico[data-action="smile"] .arm-right { animation: pico-shoulder-wiggle-r 1.6s ease-in-out infinite; }
-.pico[data-action="smile"] .head { animation: pico-head-tilt 1.6s ease-in-out infinite; }
-.pico[data-action="smile"] .antenna-bulb { fill: #f472b6; animation: pico-bulb-pink 1.6s ease-in-out infinite; }
-.pico[data-action="smile"] .antenna-glow { fill: #f472b6; animation: pico-glow-soft 1.6s ease-in-out infinite; }
-.pico[data-action="smile"] .blush { animation: pico-blush-flicker 1.6s ease-in-out infinite; transform-origin: center; transform-box: fill-box; }
+.pico[data-action="smile"] .body-wrap { animation: pico-hop 2.4s ease-in-out infinite; }
+.pico[data-action="smile"] .arm-left { animation: pico-shoulder-wiggle-l 2.4s ease-in-out infinite; }
+.pico[data-action="smile"] .arm-right { animation: pico-shoulder-wiggle-r 2.4s ease-in-out infinite; }
+.pico[data-action="smile"] .head { animation: pico-head-tilt 2.4s ease-in-out infinite; }
+.pico[data-action="smile"] .antenna-bulb { fill: #f472b6; animation: pico-bulb-pink 2.4s ease-in-out infinite; }
+.pico[data-action="smile"] .antenna-glow { fill: #f472b6; animation: pico-glow-soft 2.4s ease-in-out infinite; }
+.pico[data-action="smile"] .blush { animation: pico-blush-flicker 2.4s ease-in-out infinite; transform-origin: center; transform-box: fill-box; }
 
 @keyframes pico-hop {
   0%, 100% { transform: translateY(0); }
@@ -175,13 +175,13 @@
 }
 
 /* === cry: shaky body, droopy head, tears falling === */
-.pico[data-action="cry"] .body-wrap { animation: pico-cry-shake 0.45s ease-in-out infinite; }
-.pico[data-action="cry"] .head { animation: pico-head-droop 2.6s ease-in-out infinite; }
-.pico[data-action="cry"] .antenna { animation: pico-antenna-droop 2.6s ease-in-out infinite; transform-origin: 120px 48px; }
+.pico[data-action="cry"] .body-wrap { animation: pico-cry-shake 0.68s ease-in-out infinite; }
+.pico[data-action="cry"] .head { animation: pico-head-droop 3.9s ease-in-out infinite; }
+.pico[data-action="cry"] .antenna { animation: pico-antenna-droop 3.9s ease-in-out infinite; transform-origin: 120px 48px; }
 .pico[data-action="cry"] .antenna-bulb { fill: #94a3b8; }
 .pico[data-action="cry"] .antenna-glow { opacity: 0; }
-.pico[data-action="cry"] .tear-1 { animation: pico-tear-fall 1.4s ease-in infinite; }
-.pico[data-action="cry"] .tear-2 { animation: pico-tear-fall 1.4s ease-in infinite 0.5s; }
+.pico[data-action="cry"] .tear-1 { animation: pico-tear-fall 2.1s ease-in infinite; }
+.pico[data-action="cry"] .tear-2 { animation: pico-tear-fall 2.1s ease-in infinite 0.75s; }
 
 @keyframes pico-cry-shake {
   0%, 100% { transform: translateX(0) rotate(0); }
@@ -203,11 +203,11 @@
 }
 
 /* === wave: right arm raised, swings === */
-.pico[data-action="wave"] .arm-right { animation: pico-arm-wave 1s ease-in-out infinite; }
+.pico[data-action="wave"] .arm-right { animation: pico-arm-wave 1.5s ease-in-out infinite; }
 .pico[data-action="wave"] .arm-left { transform: rotate(-6deg); }
-.pico[data-action="wave"] .body-wrap { animation: pico-bob 2.4s ease-in-out infinite; }
-.pico[data-action="wave"] .head { animation: pico-head-tilt 2s ease-in-out infinite; }
-.pico[data-action="wave"] .antenna-bulb { animation: pico-bulb-soft 1s ease-in-out infinite; }
+.pico[data-action="wave"] .body-wrap { animation: pico-bob 3.6s ease-in-out infinite; }
+.pico[data-action="wave"] .head { animation: pico-head-tilt 3s ease-in-out infinite; }
+.pico[data-action="wave"] .antenna-bulb { animation: pico-bulb-soft 1.5s ease-in-out infinite; }
 
 @keyframes pico-arm-wave {
   0%, 100% { transform: rotate(165deg); }
@@ -215,11 +215,11 @@
 }
 
 /* === love: hearts float, pink antenna, gentle bob === */
-.pico[data-action="love"] .body-wrap { animation: pico-love-bob 1.8s ease-in-out infinite; }
-.pico[data-action="love"] .heart-eye { animation: pico-heart-throb 1s ease-in-out infinite; transform-origin: center; transform-box: fill-box; }
-.pico[data-action="love"] .antenna-bulb { fill: #ec4899; animation: pico-bulb-pink 1.4s ease-in-out infinite; }
-.pico[data-action="love"] .antenna-glow { fill: #ec4899; animation: pico-glow-soft 1.4s ease-in-out infinite; }
-.pico[data-action="love"] .head { animation: pico-head-tilt 2s ease-in-out infinite; }
+.pico[data-action="love"] .body-wrap { animation: pico-love-bob 2.7s ease-in-out infinite; }
+.pico[data-action="love"] .heart-eye { animation: pico-heart-throb 1.5s ease-in-out infinite; transform-origin: center; transform-box: fill-box; }
+.pico[data-action="love"] .antenna-bulb { fill: #ec4899; animation: pico-bulb-pink 2.1s ease-in-out infinite; }
+.pico[data-action="love"] .antenna-glow { fill: #ec4899; animation: pico-glow-soft 2.1s ease-in-out infinite; }
+.pico[data-action="love"] .head { animation: pico-head-tilt 3s ease-in-out infinite; }
 
 @keyframes pico-love-bob {
   0%, 100% { transform: translateY(0) rotate(-1.5deg); }
@@ -231,14 +231,14 @@
 }
 
 /* === dance: swing torso, arms up alternating, leg lift === */
-.pico[data-action="dance"] .body-wrap { animation: pico-dance-sway 0.8s ease-in-out infinite; }
-.pico[data-action="dance"] .head { animation: pico-dance-head 0.8s ease-in-out infinite; }
-.pico[data-action="dance"] .arm-left { animation: pico-dance-arm-l 0.8s ease-in-out infinite; }
-.pico[data-action="dance"] .arm-right { animation: pico-dance-arm-r 0.8s ease-in-out infinite; }
-.pico[data-action="dance"] .leg-left { animation: pico-dance-leg-l 0.8s ease-in-out infinite; }
-.pico[data-action="dance"] .leg-right { animation: pico-dance-leg-r 0.8s ease-in-out infinite; }
-.pico[data-action="dance"] .antenna-bulb { animation: pico-bulb-rainbow 0.8s linear infinite; }
-.pico[data-action="dance"] .antenna-glow { animation: pico-glow-soft 0.8s ease-in-out infinite; }
+.pico[data-action="dance"] .body-wrap { animation: pico-dance-sway 1.2s ease-in-out infinite; }
+.pico[data-action="dance"] .head { animation: pico-dance-head 1.2s ease-in-out infinite; }
+.pico[data-action="dance"] .arm-left { animation: pico-dance-arm-l 1.2s ease-in-out infinite; }
+.pico[data-action="dance"] .arm-right { animation: pico-dance-arm-r 1.2s ease-in-out infinite; }
+.pico[data-action="dance"] .leg-left { animation: pico-dance-leg-l 1.2s ease-in-out infinite; }
+.pico[data-action="dance"] .leg-right { animation: pico-dance-leg-r 1.2s ease-in-out infinite; }
+.pico[data-action="dance"] .antenna-bulb { animation: pico-bulb-rainbow 1.2s linear infinite; }
+.pico[data-action="dance"] .antenna-glow { animation: pico-glow-soft 1.2s ease-in-out infinite; }
 
 @keyframes pico-dance-sway {
   0%, 100% { transform: rotate(-3deg) translateY(0); }
@@ -273,13 +273,13 @@
 }
 
 /* === think: head tilt, arm to chin, ? blink === */
-.pico[data-action="think"] .head { animation: pico-think-tilt 3s ease-in-out infinite; }
+.pico[data-action="think"] .head { animation: pico-think-tilt 4.5s ease-in-out infinite; }
 .pico[data-action="think"] .arm-right { transform: rotate(-110deg); }
 .pico[data-action="think"] .arm-left { transform: rotate(-6deg); }
-.pico[data-action="think"] .body-wrap { animation: pico-bob 3.2s ease-in-out infinite; }
-.pico[data-action="think"] .qmark { animation: pico-qmark-pulse 1.4s ease-in-out infinite; transform-origin: 140px 100px; transform-box: fill-box; }
-.pico[data-action="think"] .qmark-dot { animation: pico-qmark-pulse 1.4s ease-in-out infinite; transform-origin: 140px 116px; transform-box: fill-box; }
-.pico[data-action="think"] .antenna-bulb { animation: pico-bulb-soft 1.4s ease-in-out infinite; }
+.pico[data-action="think"] .body-wrap { animation: pico-bob 4.8s ease-in-out infinite; }
+.pico[data-action="think"] .qmark { animation: pico-qmark-pulse 2.1s ease-in-out infinite; transform-origin: 140px 100px; transform-box: fill-box; }
+.pico[data-action="think"] .qmark-dot { animation: pico-qmark-pulse 2.1s ease-in-out infinite; transform-origin: 140px 116px; transform-box: fill-box; }
+.pico[data-action="think"] .antenna-bulb { animation: pico-bulb-soft 2.1s ease-in-out infinite; }
 
 @keyframes pico-think-tilt {
   0%, 100% { transform: rotate(-6deg); }
@@ -291,11 +291,11 @@
 }
 
 /* === surprise: jump, big eyes pop === */
-.pico[data-action="surprise"] .body-wrap { animation: pico-surprise-jump 1.5s ease-in-out infinite; }
-.pico[data-action="surprise"] .arm-left { animation: pico-surprise-arm-l 1.5s ease-in-out infinite; }
-.pico[data-action="surprise"] .arm-right { animation: pico-surprise-arm-r 1.5s ease-in-out infinite; }
-.pico[data-action="surprise"] .eye-big { animation: pico-eye-pop 1.5s ease-in-out infinite; transform-origin: center; transform-box: fill-box; }
-.pico[data-action="surprise"] .antenna-bulb { animation: pico-bulb-soft 1.5s ease-in-out infinite; }
+.pico[data-action="surprise"] .body-wrap { animation: pico-surprise-jump 2.25s ease-in-out infinite; }
+.pico[data-action="surprise"] .arm-left { animation: pico-surprise-arm-l 2.25s ease-in-out infinite; }
+.pico[data-action="surprise"] .arm-right { animation: pico-surprise-arm-r 2.25s ease-in-out infinite; }
+.pico[data-action="surprise"] .eye-big { animation: pico-eye-pop 2.25s ease-in-out infinite; transform-origin: center; transform-box: fill-box; }
+.pico[data-action="surprise"] .antenna-bulb { animation: pico-bulb-soft 2.25s ease-in-out infinite; }
 
 @keyframes pico-surprise-jump {
   0%, 100% { transform: translateY(0); }
@@ -316,13 +316,13 @@
 }
 
 /* === angry: red glow, head shake, tense arms === */
-.pico[data-action="angry"] .head { animation: pico-angry-shake 0.25s ease-in-out infinite; }
-.pico[data-action="angry"] .body-wrap { animation: pico-cry-shake 0.3s ease-in-out infinite; }
-.pico[data-action="angry"] .antenna-bulb { fill: #ef4444; animation: pico-angry-flash 0.6s ease-in-out infinite; }
-.pico[data-action="angry"] .antenna-glow { fill: #ef4444; animation: pico-glow-soft 0.6s ease-in-out infinite; }
+.pico[data-action="angry"] .head { animation: pico-angry-shake 0.38s ease-in-out infinite; }
+.pico[data-action="angry"] .body-wrap { animation: pico-cry-shake 0.45s ease-in-out infinite; }
+.pico[data-action="angry"] .antenna-bulb { fill: #ef4444; animation: pico-angry-flash 0.9s ease-in-out infinite; }
+.pico[data-action="angry"] .antenna-glow { fill: #ef4444; animation: pico-glow-soft 0.9s ease-in-out infinite; }
 .pico[data-action="angry"] .arm-left { transform: rotate(-12deg); }
 .pico[data-action="angry"] .arm-right { transform: rotate(12deg); }
-.pico[data-action="angry"] .brow { animation: pico-brow-throb 0.6s ease-in-out infinite; }
+.pico[data-action="angry"] .brow { animation: pico-brow-throb 0.9s ease-in-out infinite; }
 
 @keyframes pico-angry-shake {
   0%, 100% { transform: rotate(-1deg); }

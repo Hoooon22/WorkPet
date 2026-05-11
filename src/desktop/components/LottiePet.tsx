@@ -101,7 +101,7 @@ export default function LottiePet({
       transition={{
         rotateY: { duration: 0.22 },
         scaleY: paused
-          ? { duration: 2.6, repeat: Infinity, ease: 'easeInOut' }
+          ? { duration: 3.9, repeat: Infinity, ease: 'easeInOut' }
           : { duration: 0.2 },
       }}
       style={{
