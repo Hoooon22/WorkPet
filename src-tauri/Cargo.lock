@@ -6700,7 +6700,7 @@ dependencies = [
 
 [[package]]
 name = "work-pet-orbit"
-version = "1.0.3"
+version = "1.0.4"
 dependencies = [
  "base64 0.22.1",
  "image 0.25.10",
