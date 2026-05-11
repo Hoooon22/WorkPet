@@ -1196,6 +1196,12 @@ export default function App() {
     lastUserActionAtRef.current = Date.now()
     if (sleepyTimerRef.current) clearTimeout(sleepyTimerRef.current)
     sleepyTimerRef.current = setTimeout(() => setIsSleepy(true), SLEEPY_TIMEOUT_MS)
+    // Explicit "재우기" must also clear here, otherwise every click stays
+    // trapped in this wake branch and the next click never opens the panel.
+    if (wanderPausedRef.current) {
+      setWanderPaused(false)
+      void setValue(KEYS.WANDER_PAUSED, false)
+    }
     setOneShotAction('stretch')
     if (oneShotTimerRef.current) clearTimeout(oneShotTimerRef.current)
     oneShotTimerRef.current = setTimeout(() => setOneShotAction(null), WAKE_ANIMATION_MS)
