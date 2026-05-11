@@ -18,6 +18,22 @@ const PET_SPECIES_KO: Record<PetId, string> = {
   dragon: '용',
 }
 
+// 종족별 기본 이름. 트레이 메뉴로 펫을 바꾼 직후엔 가챠 기반의
+// activePet.name이 다른 종족 이름(예: "토끼")으로 남아 있을 수 있어,
+// 호출자가 petName을 비워서 넘기면 이 표로 폴백한다.
+const PET_DEFAULT_NAMES_KO: Record<PetId, string> = {
+  pico: '피코',
+  cat: '고양이',
+  rabbit: '토끼',
+  hedgehog: '고슴도치',
+  raccoon: '너구리',
+  unicorn: '유니콘',
+  dog: '강아지',
+  panda: '판다',
+  lion: '사자',
+  dragon: '드래곤',
+}
+
 // 사용자에게 노출되지 않는 펫의 기본 시스템 프롬프트.
 // askQuestion 매 호출 시 프롬프트 맨 앞에 자동으로 붙어 펫의 정체성·말투·태도를 고정한다.
 // 이름은 askQuestion 내부에서 context.petName(활성 펫 이름)이 따로 주입되므로 여기선 비워둔다.
@@ -98,12 +114,13 @@ export async function askQuestion(
   const sections: string[] = [PET_BASE_SYSTEM_PROMPT]
 
   const species = context?.petKind ? PET_SPECIES_KO[context.petKind] : null
-  if (species && context?.petName) {
-    sections.push(`너의 종족은 ${species}이고, 이름은 "${context.petName}"이야. 다른 동물·종족이라고 답하지 마.`)
+  const name = context?.petName?.trim() || (context?.petKind ? PET_DEFAULT_NAMES_KO[context.petKind] : null)
+  if (species && name) {
+    sections.push(`너의 종족은 ${species}이고, 이름은 "${name}"이야. 다른 동물·종족이라고 답하지 마.`)
   } else if (species) {
     sections.push(`너의 종족은 ${species}야. 다른 동물·종족이라고 답하지 마.`)
-  } else if (context?.petName) {
-    sections.push(`너는 사용자의 데스크톱 펫 "${context.petName}"이야.`)
+  } else if (name) {
+    sections.push(`너는 사용자의 데스크톱 펫 "${name}"이야.`)
   }
   if (context?.userProfile && context.userProfile.trim()) {
     sections.push(`아래는 사용자가 직접 적어둔 본인 프로필이다:\n${context.userProfile.trim()}`)

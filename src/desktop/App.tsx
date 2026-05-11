@@ -1355,9 +1355,13 @@ export default function App() {
       const memoryEntries = (await getValue<PetMemoryEntry[]>(KEYS.PET_MEMORY)) ?? []
       const recentMemories = memoryEntries.slice(-20).map((m) => m.text)
 
+      // 트레이로 펫 종족을 바꾸면 petKind는 갱신되지만 activePet은 이전 가챠
+      // 결과(예: 토끼)로 남아 있다. 종족이 일치할 때만 이름을 넘겨, 다른 종족
+      // 이름이 프롬프트에 새는 걸 막는다.
+      const petName = activePet?.petId === petKind ? activePet?.name : undefined
       const answer = await askQuestion(q, key, {
         petKind,
-        petName: activePet?.name,
+        petName,
         userProfile: profile?.text,
         memories: recentMemories,
       })
