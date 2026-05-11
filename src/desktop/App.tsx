@@ -183,6 +183,14 @@ function animateThrow(
         x = bounds.maxX
         vx = -vx * THROW_WALL_RESTITUTION
       }
+      if (y < bounds.ceilingY) {
+        // Hit the top of the screen — bounce back down. Without this the OS
+        // clamps the window at the top edge while internal vy is still
+        // negative, so the pet visually slides sideways with no vertical
+        // motion until gravity finally turns it around.
+        y = bounds.ceilingY
+        vy = Math.abs(vy) * THROW_WALL_RESTITUTION
+      }
       if (y >= bounds.groundY) {
         y = bounds.groundY
         if (Math.abs(vy) < THROW_REST_VY_PX_PER_SEC && Math.abs(vx) < THROW_REST_VX_PX_PER_SEC) {
@@ -211,6 +219,10 @@ interface ScreenBounds {
   minX: number
   maxX: number
   groundY: number
+  // Top of the walkable area, in window-position coordinates. Used as the
+  // throw ceiling so an upward toss bounces back instead of grinding sideways
+  // against an OS-clamped top edge.
+  ceilingY: number
 }
 
 type CursorTuple = [number, number] | null
@@ -271,6 +283,7 @@ async function loadScreenBounds(spriteSize: number): Promise<ScreenBounds | null
     minX: walk.x - sideMargin,
     maxX: walk.x + walk.width - winSize.width + sideMargin,
     groundY: walk.y + walk.height - winSize.height,
+    ceilingY: walk.y,
   }
 }
 
