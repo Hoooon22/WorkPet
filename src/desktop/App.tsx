@@ -478,11 +478,7 @@ export default function App() {
       register(
         await listen('orbit:toggle-wander', () => {
           if (cancelled) return
-          setWanderPaused((prev) => {
-            const next = !prev
-            void setValue(KEYS.WANDER_PAUSED, next)
-            return next
-          })
+          toggleWanderPaused()
         }),
       )
       register(
@@ -983,6 +979,15 @@ export default function App() {
     }, afterMs)
   }
 
+  function toggleWanderPaused() {
+    setWanderPaused((prev) => {
+      const next = !prev
+      void setValue(KEYS.WANDER_PAUSED, next)
+      if (next) showBubble('잘자요... 💤Zzz', 3000)
+      return next
+    })
+  }
+
   async function openPanel() {
     const pos = await appWindow.outerPosition()
     await invoke('open_panel', { anchorX: pos.x, anchorY: pos.y })
@@ -1050,11 +1055,7 @@ export default function App() {
         break
       }
       case 'toggle-wander':
-        setWanderPaused((prev) => {
-          const next = !prev
-          void setValue(KEYS.WANDER_PAUSED, next)
-          return next
-        })
+        toggleWanderPaused()
         break
       case 'return-home':
         ;(async () => {
