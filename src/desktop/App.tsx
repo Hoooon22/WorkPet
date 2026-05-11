@@ -269,6 +269,7 @@ export default function App() {
   const lastPanelClosedAtRef = useRef(0)
 
   const isAwayRef = useRef(false)
+  const isSleepyRef = useRef(false)
   const awayStartedAtRef = useRef<number | null>(null)
   const briefingRef = useRef<BriefingPayload>(EMPTY_BRIEFING)
 
@@ -322,6 +323,9 @@ export default function App() {
   useEffect(() => {
     isAwayRef.current = isAway
   }, [isAway])
+  useEffect(() => {
+    isSleepyRef.current = isSleepy
+  }, [isSleepy])
   useEffect(() => {
     interactingRef.current = !!bubbleMessage || !!stickyBubble || asking
   }, [bubbleMessage, stickyBubble, asking])
@@ -777,6 +781,7 @@ export default function App() {
         petState === 'dismissed' ||
         !signedIn ||
         isAwayRef.current ||
+        isSleepyRef.current ||
         interactingRef.current
       ) {
         if (phase === 'walk') enterIdle(Date.now())
