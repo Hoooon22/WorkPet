@@ -36,6 +36,9 @@
     "clipboard-manager:allow-write-text",
     "clipboard-manager:allow-read-text",
     "clipboard-manager:allow-write-image",
-    "core:image:allow-from-bytes"
+    "core:image:allow-from-bytes",
+    "updater:default",
+    "process:default",
+    "process:allow-restart"
   ]
 }

@@ -773,6 +773,8 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_clipboard_manager::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .manage(TrayState::default())
         .invoke_handler(tauri::generate_handler![
             get_cursor_position,
@@ -1064,6 +1066,7 @@ fn build_tray_menu(app: &AppHandle) -> Result<tauri::menu::Menu<tauri::Wry>, Box
         .text("pos:default", "기본 위치")
         .text("pos:bottom-right", "우하단으로")
         .separator()
+        .text("update:check", "업데이트 확인")
         .text("quit", "종료")
         .build()?;
 
@@ -1131,6 +1134,9 @@ fn build_tray(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
                         "orbit:panel-action",
                         serde_json::json!({ "type": "return-home" }),
                     );
+                }
+                "update:check" => {
+                    let _ = app.emit("orbit:check-update", ());
                 }
                 _ => {}
             }

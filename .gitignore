@@ -22,6 +22,10 @@ src-tauri/gen/schemas/
 orbit-extension.pem
 orbit-key.txt
 
+# Tauri updater signing key (절대 커밋 금지 — 분실 시 자동 업데이트 불가)
+src-tauri/.tauri-signing-key
+src-tauri/.tauri-signing-key.pub
+
 # Firebase
 .firebase/
 firebase-debug.log

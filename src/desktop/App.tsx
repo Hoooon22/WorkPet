@@ -263,6 +263,7 @@ export default function App() {
   const alertBubbleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const morningGreetingShownRef = useRef(false)
+  const updateInFlightRef = useRef(false)
 
   const mouseDownAtRef = useRef<{ x: number; y: number } | null>(null)
   const dragStartedRef = useRef(false)
@@ -589,6 +590,12 @@ export default function App() {
             setStickyBubble(e.payload.message)
           },
         ),
+      )
+      register(
+        await listen('orbit:check-update', () => {
+          if (cancelled) return
+          void runUpdateFlow()
+        }),
       )
     })()
     return () => {
@@ -974,6 +981,30 @@ export default function App() {
     if (greetingTimerRef.current) clearTimeout(greetingTimerRef.current)
     setBubbleMessage(message)
     greetingTimerRef.current = setTimeout(() => setBubbleMessage(null), durationMs)
+  }
+
+  async function runUpdateFlow() {
+    if (updateInFlightRef.current) return
+    updateInFlightRef.current = true
+    try {
+      showBubble('업데이트 확인 중... 🔍', 2500)
+      const { check } = await import('@tauri-apps/plugin-updater')
+      const update = await check()
+      if (!update) {
+        showBubble('최신 버전이에요 ✅', 2500)
+        return
+      }
+      showBubble(`새 버전 v${update.version} 설치 중... ⬇️`, 60_000)
+      await update.downloadAndInstall()
+      showBubble('설치 완료! 재시작합니다 ✨', 2000)
+      const { relaunch } = await import('@tauri-apps/plugin-process')
+      setTimeout(() => { void relaunch() }, 1500)
+    } catch (err) {
+      console.warn('[orbit] update flow failed', err)
+      showBubble('업데이트에 실패했어요 😢', 3000)
+    } finally {
+      updateInFlightRef.current = false
+    }
   }
 
   function scheduleLoginHint(afterMs: number) {
