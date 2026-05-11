@@ -733,6 +733,7 @@ export default function App() {
       if (cancelled || inFlight) return
       if (oneShotAction) return
       if (wanderPausedRef.current) return
+      if (isSleepyRef.current || isAwayRef.current) return
       if (wanderActionRef.current !== 'idle') return
       inFlight = true
       try {
