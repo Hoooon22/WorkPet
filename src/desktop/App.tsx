@@ -246,6 +246,7 @@ export default function App() {
 
   const wanderActionRef = useRef<WanderPhase>('idle')
   const wanderPausedRef = useRef(false)
+  const interactingRef = useRef(false)
   const panelOpenRef = useRef(false)
   const petStateRef = useRef<PetState>('idle')
   const petKindRef = useRef<PetId>('pico')
@@ -321,6 +322,9 @@ export default function App() {
   useEffect(() => {
     isAwayRef.current = isAway
   }, [isAway])
+  useEffect(() => {
+    interactingRef.current = !!bubbleMessage || !!stickyBubble || asking
+  }, [bubbleMessage, stickyBubble, asking])
   useEffect(() => {
     askingRef.current = asking
   }, [asking])
@@ -772,7 +776,8 @@ export default function App() {
         panelOpenRef.current ||
         petState === 'dismissed' ||
         !signedIn ||
-        isAwayRef.current
+        isAwayRef.current ||
+        interactingRef.current
       ) {
         if (phase === 'walk') enterIdle(Date.now())
         return
