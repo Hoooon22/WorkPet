@@ -498,6 +498,7 @@ export default function App() {
             await setValue(KEYS.PET_KIND, pet.petId)
           }
           showBubble(`안녕! 나는 ${pet.name}이야 🎉`, 4000)
+          playAction('dance', 4000)
         }),
       )
       register(
@@ -508,6 +509,7 @@ export default function App() {
       register(
         await listen<string>('orbit:color-result', (e) => {
           showBubble(`📋 색상코드 ${e.payload.toUpperCase()} 가 복사되었습니다`, 2500)
+          playAction('smile', 2500)
         }),
       )
       register(
@@ -523,9 +525,11 @@ export default function App() {
             const image = await Image.fromBytes(bytes)
             await writeImage(image)
             showBubble('📷 화면 캡처가 클립보드에 복사되었습니다', 2500)
+            playAction('jump', 2500)
           } catch (err) {
             console.warn('[orbit] screenshot copy failed', err)
             showBubble('😢 캡처 복사에 실패했어요', 2500)
+            playAction('cry', 2500)
           }
         }),
       )
@@ -548,12 +552,14 @@ export default function App() {
               setSignedIn(false)
               if (loginHintTimerRef.current) clearTimeout(loginHintTimerRef.current)
               showBubble('잘 있어요! 또 봐요 👋', 2500)
+              playAction('wave', 2500)
             } else {
               const { email } = await signIn()
               setSignedIn(true)
               const hour = new Date().getHours()
               const greet = hour < 12 ? '좋은 아침이에요' : '안녕하세요'
               showBubble(`${greet}${email ? `, ${email}` : ''}! 😊`, 3500)
+              playAction('love', 3500)
               scheduleLoginHint(3700)
               void fetchNow().catch(() => {})
             }
@@ -588,6 +594,7 @@ export default function App() {
             if (cancelled) return
             stickyActionRef.current = null
             setStickyBubble(e.payload.message)
+            playAction('peek', 2500)
           },
         ),
       )
@@ -900,6 +907,7 @@ export default function App() {
             briefingRef.current.events,
           )
           showBubble(greetingForAway(reason, awayMs), AWAY_GREET_DURATION_MS)
+          playAction('wave', AWAY_GREET_DURATION_MS)
         }
       }
     }
@@ -917,7 +925,10 @@ export default function App() {
     morningGreetingShownRef.current = true
     const hour = new Date().getHours()
     if (hour >= 6 && hour < 11 && signedIn) {
-      const t = setTimeout(() => showBubble('좋은 아침이에요! ☀️', 2500), 800)
+      const t = setTimeout(() => {
+        showBubble('좋은 아침이에요! ☀️', 2500)
+        playAction('stretch', 2500)
+      }, 800)
       return () => clearTimeout(t)
     }
   }, [petState, signedIn])
@@ -948,6 +959,7 @@ export default function App() {
     setPetState('idle')
     void setValue(KEYS.PET_STATE, 'idle')
     showBubble('모든 알림을 확인했어요 😊', 3000)
+    playAction('dance', 3000)
   }, [briefing, petState])
 
   // ── Alert bubble auto-show ──
@@ -960,6 +972,7 @@ export default function App() {
       const summary = detailed ? briefing.summary : liveSummary(briefing)
       const duration = detailed ? 6500 : 5000
       setBubbleMessage(summary)
+      playAction('alert', duration)
       alertBubbleTimerRef.current = setTimeout(() => {
         setBubbleMessage((prev) => (prev === summary ? null : prev))
       }, duration)
@@ -1002,25 +1015,36 @@ export default function App() {
     greetingTimerRef.current = setTimeout(() => setBubbleMessage(null), durationMs)
   }
 
+  function playAction(action: PetAction, durationMs: number) {
+    setOneShotAction(action)
+    if (oneShotTimerRef.current) clearTimeout(oneShotTimerRef.current)
+    oneShotTimerRef.current = setTimeout(() => setOneShotAction(null), durationMs)
+  }
+
   async function runUpdateFlow() {
     if (updateInFlightRef.current) return
     updateInFlightRef.current = true
     try {
       showBubble('업데이트 확인 중... 🔍', 2500)
+      playAction('think', 2500)
       const { check } = await import('@tauri-apps/plugin-updater')
       const update = await check()
       if (!update) {
         showBubble('최신 버전이에요 ✅', 2500)
+        playAction('smile', 2500)
         return
       }
       showBubble(`새 버전 v${update.version} 설치 중... ⬇️`, 60_000)
+      playAction('dance', 4000)
       await update.downloadAndInstall()
       showBubble('설치 완료! 재시작합니다 ✨', 2000)
+      playAction('jump', 2000)
       const { relaunch } = await import('@tauri-apps/plugin-process')
       setTimeout(() => { void relaunch() }, 1500)
     } catch (err) {
       console.warn('[orbit] update flow failed', err)
       showBubble('업데이트에 실패했어요 😢', 3000)
+      playAction('cry', 3000)
     } finally {
       updateInFlightRef.current = false
     }
@@ -1030,6 +1054,7 @@ export default function App() {
     if (loginHintTimerRef.current) clearTimeout(loginHintTimerRef.current)
     loginHintTimerRef.current = setTimeout(() => {
       showBubble('💬 더블클릭하면 뭐든 물어볼 수 있어요', 3500)
+      playAction('peek', 3500)
     }, afterMs)
   }
 
@@ -1037,7 +1062,10 @@ export default function App() {
     setWanderPaused((prev) => {
       const next = !prev
       void setValue(KEYS.WANDER_PAUSED, next)
-      if (next) showBubble('잘자요... 💤Zzz', 3000)
+      if (next) {
+        showBubble('잘자요... 💤Zzz', 3000)
+        playAction('yawn', 2000)
+      }
       return next
     })
   }
@@ -1152,6 +1180,7 @@ export default function App() {
             const { email } = await signIn()
             setSignedIn(true)
             showBubble(`반가워요${email ? `, ${email}` : ''}!`, 3000)
+            playAction('love', 3000)
             scheduleLoginHint(3200)
             void fetchNow().catch(() => {})
           } catch (err) {
@@ -1165,6 +1194,7 @@ export default function App() {
           setSignedIn(false)
           if (loginHintTimerRef.current) clearTimeout(loginHintTimerRef.current)
           showBubble('잘 있어요! 또 봐요 👋', 2500)
+          playAction('wave', 2500)
         })()
         break
       case 'fetch-full':
@@ -1222,9 +1252,7 @@ export default function App() {
       setWanderPaused(false)
       void setValue(KEYS.WANDER_PAUSED, false)
     }
-    setOneShotAction('stretch')
-    if (oneShotTimerRef.current) clearTimeout(oneShotTimerRef.current)
-    oneShotTimerRef.current = setTimeout(() => setOneShotAction(null), WAKE_ANIMATION_MS)
+    playAction('stretch', WAKE_ANIMATION_MS)
   }
 
   const handleMouseUp = () => {
@@ -1297,19 +1325,25 @@ export default function App() {
             await openPanel()
           })()
         }
+        playAction('surprise', 2500)
         return
       }
       const answer = await askQuestion(q, key)
       setBubbleMessage(null)
       setStickyBubble(answer.trim() || '음… 답을 찾지 못했어요.')
       setQuestionDraft('')
+      playAction('smile', 2500)
     } catch (err) {
       const code = err instanceof Error ? err.message : String(err)
       setBubbleMessage(null)
       setStickyBubble(geminiErrorMessage(code, 0))
+      playAction('cry', 2500)
     } finally {
       setAskLoading(false)
-      setOneShotAction(null)
+      // Clear lingering 'think' only — don't overwrite the reaction (smile/surprise/cry)
+      // queued by playAction above. React processes setState in order, so the
+      // functional updater sees the most recently queued value.
+      setOneShotAction((prev) => (prev === 'think' ? null : prev))
     }
   }
 

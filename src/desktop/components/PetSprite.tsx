@@ -28,9 +28,9 @@ const PICO_FALLBACK: Record<PetAction, PicoAction> = {
   surprise: 'surprise',
   angry: 'angry',
   yawn: 'sleep',
-  peek: 'surprise',
-  stretch: 'idle',
-  jump: 'surprise',
+  peek: 'idle',
+  stretch: 'smile',
+  jump: 'smile',
   tumble: 'cry',
 }
 
