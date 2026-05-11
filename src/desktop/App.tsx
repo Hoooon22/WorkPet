@@ -630,7 +630,8 @@ export default function App() {
     let cancelled = false
     let inFlight = false
     let currentlyIgnoring: boolean | null = null
-    const dpr = window.devicePixelRatio || 1
+    // devicePixelRatio can change when the window moves to a monitor with a
+    // different scale factor, so read it per-tick instead of caching once.
     const PAINTED_SVG_TAGS = new Set([
       'path',
       'circle',
@@ -660,6 +661,7 @@ export default function App() {
       try {
         const cursor = await invoke<CursorTuple>('get_cursor_position')
         if (!cursor) return
+        const dpr = window.devicePixelRatio || 1
         const winRelX = (cursor[0] - posCache.x) / dpr
         const winRelY = (cursor[1] - posCache.y) / dpr
 
