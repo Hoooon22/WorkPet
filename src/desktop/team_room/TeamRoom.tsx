@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { isFirebaseConfigured } from '../../shared/firebaseConfig'
 import { ensureFirebaseAuth } from '../../shared/firebase'
 import { getValue, setValue, KEYS } from '../../shared/storage'
@@ -133,9 +134,72 @@ function Shell({ children }: { children: React.ReactNode }) {
         background: COLOR_BG,
         color: COLOR_FG,
         overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
       }}
     >
-      {children}
+      <TitleBar />
+      <div style={{ flex: 1, minHeight: 0 }}>{children}</div>
+    </div>
+  )
+}
+
+function TitleBar() {
+  async function handleClose() {
+    try {
+      await getCurrentWebviewWindow().close()
+    } catch {
+      // noop
+    }
+  }
+  return (
+    <div
+      data-tauri-drag-region
+      style={{
+        height: 32,
+        flex: '0 0 32px',
+        background: '#ffffff',
+        borderBottom: '1px solid #e5e7eb',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '0 8px 0 12px',
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+      }}
+    >
+      <span
+        data-tauri-drag-region
+        style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}
+      >
+        팀 펫 룸
+      </span>
+      <button
+        onClick={handleClose}
+        aria-label="닫기"
+        style={{
+          all: 'unset',
+          width: 22,
+          height: 22,
+          borderRadius: 4,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 14,
+          color: '#6b7280',
+          cursor: 'pointer',
+        }}
+        onMouseEnter={(e) => {
+          ;(e.currentTarget as HTMLButtonElement).style.background = '#ef4444'
+          ;(e.currentTarget as HTMLButtonElement).style.color = '#fff'
+        }}
+        onMouseLeave={(e) => {
+          ;(e.currentTarget as HTMLButtonElement).style.background = 'transparent'
+          ;(e.currentTarget as HTMLButtonElement).style.color = '#6b7280'
+        }}
+      >
+        ✕
+      </button>
     </div>
   )
 }

@@ -526,10 +526,11 @@ async fn open_team_room(app: AppHandle) -> Result<(), String> {
     .title("팀 펫 룸")
     .inner_size(TEAM_ROOM_WIDTH as f64, TEAM_ROOM_HEIGHT as f64)
     .min_inner_size(560.0, 360.0)
-    .decorations(true)
+    .decorations(false)
     .transparent(false)
     .always_on_top(false)
     .resizable(true)
+    .accept_first_mouse(true)
     .visible(true)
     .build()
     .map_err(|e| format!("team_room build: {e}"))?;
