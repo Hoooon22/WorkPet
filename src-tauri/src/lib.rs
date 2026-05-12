@@ -69,13 +69,59 @@ fn frontmost_app_name_macos() -> Option<String> {
     Some(name.to_string())
 }
 
+// Windows에는 macOS의 localizedName 같은 표시명이 없어, 포그라운드 창의 프로세스
+// 실행 파일 stem(예: chrome, Code, slack)을 best-effort로 반환한다. tickUsage는
+// 이 값을 키로 사용해 시간 집계를 누적하므로 stable한 식별자면 충분하다.
+#[cfg(target_os = "windows")]
+fn frontmost_app_name_windows() -> Option<String> {
+    use windows_sys::Win32::Foundation::CloseHandle;
+    use windows_sys::Win32::System::Threading::{
+        OpenProcess, QueryFullProcessImageNameW, PROCESS_QUERY_LIMITED_INFORMATION,
+    };
+    use windows_sys::Win32::UI::WindowsAndMessaging::{
+        GetForegroundWindow, GetWindowThreadProcessId,
+    };
+
+    unsafe {
+        let hwnd = GetForegroundWindow();
+        if hwnd.is_null() {
+            return None;
+        }
+        let mut pid: u32 = 0;
+        GetWindowThreadProcessId(hwnd, &mut pid);
+        if pid == 0 {
+            return None;
+        }
+        let handle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid);
+        if handle.is_null() {
+            return None;
+        }
+        let mut buf = [0u16; 512];
+        let mut size: u32 = buf.len() as u32;
+        let ok = QueryFullProcessImageNameW(handle, 0, buf.as_mut_ptr(), &mut size);
+        CloseHandle(handle);
+        if ok == 0 || size == 0 {
+            return None;
+        }
+        let path = String::from_utf16_lossy(&buf[..size as usize]);
+        std::path::Path::new(&path)
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .map(|s| s.to_string())
+    }
+}
+
 #[tauri::command]
 fn get_frontmost_app() -> Option<String> {
     #[cfg(target_os = "macos")]
     {
         frontmost_app_name_macos()
     }
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(target_os = "windows")]
+    {
+        frontmost_app_name_windows()
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
     {
         None
     }
