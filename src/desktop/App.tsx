@@ -526,6 +526,7 @@ export default function App() {
         if (alertStickyRef.current && alertStickyRef.current === stickyBubble) {
           dismissedAlertRef.current = alertStickyRef.current
           alertStickyRef.current = null
+          stopAlertAction()
         }
         setStickyBubble(null)
         return
@@ -1597,6 +1598,19 @@ export default function App() {
     oneShotTimerRef.current = setTimeout(() => setOneShotAction(null), durationMs)
   }
 
+  // 사용자가 알람 말풍선을 직접 닫으면 펫이 짓던 alert 표정도 함께 끝낸다.
+  // 다른 액션이 이미 alert 위에 덮어쓴 상태라면 그대로 둔다.
+  function stopAlertAction() {
+    setOneShotAction((prev) => {
+      if (prev !== 'alert') return prev
+      if (oneShotTimerRef.current) {
+        clearTimeout(oneShotTimerRef.current)
+        oneShotTimerRef.current = null
+      }
+      return null
+    })
+  }
+
   function dismissTransientUI() {
     if (greetingTimerRef.current) {
       clearTimeout(greetingTimerRef.current)
@@ -2135,6 +2149,7 @@ export default function App() {
                             // doesn't immediately pop it back up.
                             dismissedAlertRef.current = alertStickyRef.current
                             alertStickyRef.current = null
+                            stopAlertAction()
                           }
                           setStickyBubble(null)
                           if (action) action()
