@@ -1083,6 +1083,8 @@ pub fn run() {
             }
             if let Some(window) = app.get_webview_window("pet") {
                 let _ = window.set_visible_on_all_workspaces(true);
+                #[cfg(target_os = "macos")]
+                raise_macos_window_level(&window);
                 position_default(&window);
             }
             build_tray(app)?;
@@ -1214,6 +1216,26 @@ fn get_walk_area(window: tauri::WebviewWindow) -> Result<WalkArea, String> {
 fn ground_y_from_walk_area(window: &tauri::WebviewWindow, win_height: u32) -> Option<i32> {
     let area = walk_area_for(window)?;
     Some(area.y + area.height - win_height as i32)
+}
+
+// macOS Sequoia(15+)의 "배경화면 클릭 시 데스크톱 표시" 기능이 펫 윈도우 클릭을
+// 바탕화면 클릭으로도 처리해 다른 창들이 모두 숨겨지는 문제를 막는다.
+// always_on_top(true)가 지정하는 NSFloating(3) 레벨에서는 시스템이 데스크톱 레이어
+// 인접으로 분류해 이중처리가 발생한다. NSStatusWindowLevel(25)은 상태바 아이콘과
+// 동일 레벨로, 일반 UI 윈도우로 분명히 인식되면서 알림(101+)은 가리지 않는다.
+#[cfg(target_os = "macos")]
+fn raise_macos_window_level(window: &tauri::WebviewWindow) {
+    use objc2::runtime::AnyObject;
+    let Ok(raw) = window.ns_window() else {
+        return;
+    };
+    if raw.is_null() {
+        return;
+    }
+    unsafe {
+        let ns_window = &*(raw as *const AnyObject);
+        let _: () = objc2::msg_send![ns_window, setLevel: 25_isize];
+    }
 }
 
 fn position_default(window: &tauri::WebviewWindow) {
