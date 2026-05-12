@@ -140,32 +140,79 @@ fn get_frontmost_app() -> Option<String> {
 #[cfg(target_os = "macos")]
 #[link(name = "CoreGraphics", kind = "framework")]
 extern "C" {
-    fn CGEventSourceSecondsSinceLastEventType(source: u32, event_type: u32) -> f64;
     fn CGEventSourceButtonState(source: u32, button: u32) -> u8;
 }
 
 #[cfg(target_os = "macos")]
+#[link(name = "IOKit", kind = "framework")]
+#[link(name = "CoreFoundation", kind = "framework")]
+extern "C" {
+    fn IOServiceMatching(name: *const std::os::raw::c_char) -> *mut std::ffi::c_void;
+    fn IOServiceGetMatchingService(main_port: u32, matching: *mut std::ffi::c_void) -> u32;
+    fn IORegistryEntryCreateCFProperty(
+        entry: u32,
+        key: *const std::ffi::c_void,
+        allocator: *const std::ffi::c_void,
+        options: u32,
+    ) -> *const std::ffi::c_void;
+    fn IOObjectRelease(obj: u32) -> i32;
+
+    fn CFStringCreateWithCString(
+        alloc: *const std::ffi::c_void,
+        c_str: *const std::os::raw::c_char,
+        encoding: u32,
+    ) -> *const std::ffi::c_void;
+    fn CFNumberGetValue(
+        number: *const std::ffi::c_void,
+        the_type: i32,
+        value_ptr: *mut std::ffi::c_void,
+    ) -> u8;
+    fn CFRelease(cf: *const std::ffi::c_void);
+}
+
+#[cfg(target_os = "macos")]
 fn idle_seconds_impl() -> f64 {
-    // kCGEventSourceStateHIDSystemState = 1.
-    // kCGAnyInputEventType (0xFFFFFFFF)는 일부 macOS 버전에서 마우스 이동 이벤트를
-    // 누락시켜 키보드 입력에만 반응하는 것처럼 보이는 문제가 있어, 개별 이벤트
-    // 타입을 각각 조회하고 그 중 최소값을 사용한다.
-    //   kCGEventLeftMouseDown   = 1
-    //   kCGEventRightMouseDown  = 3
-    //   kCGEventMouseMoved      = 5
-    //   kCGEventKeyDown         = 10
-    //   kCGEventFlagsChanged    = 12
-    //   kCGEventScrollWheel     = 22
-    //   kCGEventOtherMouseDown  = 25
-    const EVENT_TYPES: [u32; 7] = [1, 3, 5, 10, 12, 22, 25];
-    let mut min_idle = f64::INFINITY;
-    for &t in EVENT_TYPES.iter() {
-        let s = unsafe { CGEventSourceSecondsSinceLastEventType(1, t) };
-        if s >= 0.0 && s < min_idle {
-            min_idle = s;
+    // IOHIDSystem의 HIDIdleTime 프로퍼티는 macOS에서 접근성 권한 없이도 안정적으로
+    // 시스템 전체 입력(마우스 이동 포함) idle을 알려주는 표준 경로다.
+    // CGEventSourceSecondsSinceLastEventType은 macOS 버전/권한 상태에 따라 마우스
+    // 이동 이벤트를 꾸준히 누락해 펫이 안 깨어나는 문제가 있어 IOKit으로 전환했다.
+    const K_CF_NUMBER_SINT64_TYPE: i32 = 4;
+    const K_CF_STRING_ENCODING_UTF8: u32 = 0x0800_0100;
+    unsafe {
+        let service_name = b"IOHIDSystem\0".as_ptr() as *const std::os::raw::c_char;
+        let matching = IOServiceMatching(service_name);
+        if matching.is_null() {
+            return 0.0;
         }
+        // IOServiceGetMatchingService는 matching 딕셔너리의 참조를 소비한다.
+        let entry = IOServiceGetMatchingService(0, matching);
+        if entry == 0 {
+            return 0.0;
+        }
+        let key_c = b"HIDIdleTime\0".as_ptr() as *const std::os::raw::c_char;
+        let key = CFStringCreateWithCString(std::ptr::null(), key_c, K_CF_STRING_ENCODING_UTF8);
+        if key.is_null() {
+            IOObjectRelease(entry);
+            return 0.0;
+        }
+        let value = IORegistryEntryCreateCFProperty(entry, key, std::ptr::null(), 0);
+        CFRelease(key);
+        IOObjectRelease(entry);
+        if value.is_null() {
+            return 0.0;
+        }
+        let mut idle_ns: i64 = 0;
+        let ok = CFNumberGetValue(
+            value,
+            K_CF_NUMBER_SINT64_TYPE,
+            &mut idle_ns as *mut i64 as *mut std::ffi::c_void,
+        );
+        CFRelease(value);
+        if ok == 0 || idle_ns < 0 {
+            return 0.0;
+        }
+        idle_ns as f64 / 1_000_000_000.0
     }
-    if min_idle.is_finite() { min_idle } else { 0.0 }
 }
 
 #[cfg(target_os = "windows")]
