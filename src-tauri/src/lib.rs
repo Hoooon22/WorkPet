@@ -659,14 +659,38 @@ async fn open_team_room(app: AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+// Pick the monitor that currently hosts the cursor so overlays open on the
+// active display in multi-monitor setups. Falls back to primary.
+fn monitor_under_cursor(app: &AppHandle) -> Option<tauri::window::Monitor> {
+    let window = app.get_webview_window("pet")?;
+    if let Ok(cursor) = app.cursor_position() {
+        if let Ok(monitors) = window.available_monitors() {
+            for m in monitors {
+                let p = m.position();
+                let s = m.size();
+                let mx = p.x as f64;
+                let my = p.y as f64;
+                let mw = s.width as f64;
+                let mh = s.height as f64;
+                if cursor.x >= mx
+                    && cursor.x < mx + mw
+                    && cursor.y >= my
+                    && cursor.y < my + mh
+                {
+                    return Some(m);
+                }
+            }
+        }
+    }
+    window.primary_monitor().ok().flatten()
+}
+
 #[tauri::command]
 async fn open_screenshot_overlay(app: AppHandle) -> Result<(), String> {
     if app.get_webview_window("screenshot").is_some() {
         return Ok(());
     }
-    let monitor = app
-        .get_webview_window("pet")
-        .and_then(|w| w.primary_monitor().ok().flatten());
+    let monitor = monitor_under_cursor(&app);
     let (mx, my, mw, mh, scale) = if let Some(m) = monitor {
         (
             m.position().x,
@@ -756,9 +780,7 @@ async fn open_color_picker_overlay(app: AppHandle) -> Result<(), String> {
     if app.get_webview_window("color-picker").is_some() {
         return Ok(());
     }
-    let monitor = app
-        .get_webview_window("pet")
-        .and_then(|w| w.primary_monitor().ok().flatten());
+    let monitor = monitor_under_cursor(&app);
     let (mx, my, mw, mh, scale) = if let Some(m) = monitor {
         (
             m.position().x,
@@ -774,9 +796,10 @@ async fn open_color_picker_overlay(app: AppHandle) -> Result<(), String> {
     let logical_w = mw / scale;
     let logical_h = mh / scale;
 
-    // Capture the primary screen *before* the overlay shows so the magnifier
+    // Capture the active screen *before* the overlay shows so the magnifier
     // can render the actual desktop pixels (not the dimmed overlay tint).
     let capture_origin = (mx, my);
+    let cursor_hint = app.cursor_position().ok().map(|p| (p.x as i32, p.y as i32));
     let capture = tauri::async_runtime::spawn_blocking(move || -> Result<ColorPickerCapture, String> {
         use screenshots::Screen;
         let screens = Screen::all().map_err(|e| format!("screens: {e}"))?;
@@ -784,6 +807,17 @@ async fn open_color_picker_overlay(app: AppHandle) -> Result<(), String> {
         let screen = screens
             .iter()
             .find(|s| s.display_info.x == ox && s.display_info.y == oy)
+            .or_else(|| {
+                cursor_hint.and_then(|(cx, cy)| {
+                    screens.iter().find(|s| {
+                        let info = &s.display_info;
+                        cx >= info.x
+                            && cy >= info.y
+                            && cx < info.x + info.width as i32
+                            && cy < info.y + info.height as i32
+                    })
+                })
+            })
             .or_else(|| screens.iter().find(|s| s.display_info.is_primary))
             .or_else(|| screens.first())
             .cloned()
