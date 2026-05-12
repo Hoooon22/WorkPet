@@ -1512,7 +1512,13 @@ export default function App() {
     }
     setWidgetBubble(message)
     setWidgetVisible(true)
-    playAction('peek', 2500)
+    // 우하단에서 통통 튀어 오르는 등장 → 잠시 손을 흔드는 후속 동작.
+    playAction('jump', 1300)
+    setTimeout(() => {
+      if (widgetVisibleRef.current && widgetModeRef.current) {
+        playAction('wave', 2000)
+      }
+    }, 1300)
     if (widgetHideTimerRef.current) clearTimeout(widgetHideTimerRef.current)
     widgetHideTimerRef.current = setTimeout(() => {
       void hideWidget()
@@ -2153,14 +2159,61 @@ export default function App() {
             onDoubleClick={
               widgetMode ? () => hideWidget() : handleDoubleClick
             }
-            initial={widgetMode ? { scale: 0.25, opacity: 0, y: 24 } : false}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
+            initial={
+              widgetMode
+                ? { scale: 0.2, opacity: 0, x: 80, y: 60, rotate: -18 }
+                : false
+            }
+            animate={
+              widgetMode
+                ? {
+                    scale: 1,
+                    opacity: 1,
+                    x: 0,
+                    // 등장 후 가벼운 호버: 위아래로 살짝씩 떠다닌다.
+                    y: [0, -6, 0, -3, 0],
+                    rotate: [0, -4, 4, -2, 0],
+                  }
+                : { scale: 1, opacity: 1, y: 0 }
+            }
             exit={
               widgetMode
-                ? { scale: 0.25, opacity: 0, y: 16, transition: { duration: 0.22 } }
+                ? {
+                    scale: 0.2,
+                    opacity: 0,
+                    x: 60,
+                    y: 40,
+                    rotate: 18,
+                    transition: { duration: 0.28, ease: 'easeIn' },
+                  }
                 : { opacity: 0, transition: { duration: 0.12 } }
             }
-            transition={{ type: 'spring', stiffness: 220, damping: 18 }}
+            transition={
+              widgetMode
+                ? {
+                    default: {
+                      type: 'spring',
+                      stiffness: 320,
+                      damping: 11,
+                      mass: 0.9,
+                    },
+                    y: {
+                      delay: 0.5,
+                      duration: 2.4,
+                      repeat: Infinity,
+                      repeatType: 'loop',
+                      ease: 'easeInOut',
+                    },
+                    rotate: {
+                      delay: 0.5,
+                      duration: 2.4,
+                      repeat: Infinity,
+                      repeatType: 'loop',
+                      ease: 'easeInOut',
+                    },
+                  }
+                : { type: 'spring', stiffness: 220, damping: 18 }
+            }
             style={{
               width: spriteSize,
               height: spriteSize,

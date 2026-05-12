@@ -607,45 +607,52 @@ fn panel_anchor_position(app: &AppHandle, anchor_x: i32, anchor_y: i32) -> (i32,
 // ─────────────────────────────────────────────────────────────────────────
 
 #[cfg(target_os = "macos")]
-fn tray_anchor_impl(m_x: i32, m_y: i32, m_w: i32, _m_h: i32, scale: f64) -> (i32, i32) {
+fn tray_anchor_impl(m_x: i32, m_y: i32, m_w: i32, m_h: i32, scale: f64) -> (i32, i32) {
     let to_phys = |v: i32| (v as f64 * scale) as i32;
     let pet_w_phys = to_phys(PET_WINDOW_W);
-    // Sit just under the menu bar, with right padding so the pet visually
-    // hangs below the right cluster (where the system tray items live).
-    let menu_bar_drop = to_phys(28);
-    let right_pad = to_phys(80);
+    let pet_h_phys = to_phys(PET_WINDOW_H);
+    // Bottom-right corner. Pet 윈도우 자체가 240x320 이고 스프라이트는 그 안에서
+    // 하단 중앙 정렬이라, 패딩을 두지 않으면 스프라이트가 화면 우측 끝에 너무 붙는다.
+    let right_pad = to_phys(24);
+    let bottom_pad = to_phys(8);
     let x = m_x + m_w - pet_w_phys - right_pad;
-    let y = m_y + menu_bar_drop;
+    let y = m_y + m_h - pet_h_phys - bottom_pad;
     (x, y)
 }
 
 #[cfg(target_os = "windows")]
 fn tray_anchor_impl(m_x: i32, m_y: i32, m_w: i32, m_h: i32, scale: f64) -> (i32, i32) {
-    use windows_sys::Win32::UI::Shell::{
-        SHAppBarMessage, ABE_BOTTOM, ABE_LEFT, ABE_RIGHT, ABE_TOP, ABM_GETTASKBARPOS, APPBARDATA,
+    use windows_sys::Win32::Foundation::POINT;
+    use windows_sys::Win32::Graphics::Gdi::{
+        GetMonitorInfoW, MonitorFromPoint, MONITORINFO, MONITOR_DEFAULTTONEAREST,
     };
     let to_phys = |v: i32| (v as f64 * scale) as i32;
     let pet_w_phys = to_phys(PET_WINDOW_W);
     let pet_h_phys = to_phys(PET_WINDOW_H);
-    let pad = to_phys(80);
+    let right_pad = to_phys(24);
+    let bottom_pad = to_phys(8);
+    // 작업표시줄을 가리지 않도록 rcWork 기준 우하단을 쓴다. rcWork가 실패하면
+    // monitor 전체 크기로 폴백.
     unsafe {
-        let mut data: APPBARDATA = std::mem::zeroed();
-        data.cbSize = std::mem::size_of::<APPBARDATA>() as u32;
-        if SHAppBarMessage(ABM_GETTASKBARPOS, &mut data) != 0 {
-            let r = data.rc;
-            let edge = data.uEdge;
-            if edge == ABE_BOTTOM {
-                return (r.right - pet_w_phys - pad, r.top - pet_h_phys);
-            } else if edge == ABE_TOP {
-                return (r.right - pet_w_phys - pad, r.bottom);
-            } else if edge == ABE_LEFT {
-                return (r.right, r.bottom - pet_h_phys - pad);
-            } else if edge == ABE_RIGHT {
-                return (r.left - pet_w_phys, r.bottom - pet_h_phys - pad);
-            }
+        let center = POINT {
+            x: m_x + m_w / 2,
+            y: m_y + m_h / 2,
+        };
+        let hmon = MonitorFromPoint(center, MONITOR_DEFAULTTONEAREST);
+        let mut info: MONITORINFO = std::mem::zeroed();
+        info.cbSize = std::mem::size_of::<MONITORINFO>() as u32;
+        if GetMonitorInfoW(hmon, &mut info) != 0 {
+            let r = info.rcWork;
+            return (
+                r.right - pet_w_phys - right_pad,
+                r.bottom - pet_h_phys - bottom_pad,
+            );
         }
     }
-    (m_x + m_w - pet_w_phys - pad, m_y + m_h - pet_h_phys)
+    (
+        m_x + m_w - pet_w_phys - right_pad,
+        m_y + m_h - pet_h_phys - bottom_pad,
+    )
 }
 
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
