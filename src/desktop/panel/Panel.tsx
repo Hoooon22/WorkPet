@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { listen, emit } from '@tauri-apps/api/event'
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow'
@@ -41,6 +41,7 @@ export default function Panel() {
   const [focusTimer, setFocusTimer] = useState<FocusTimerState>(IDLE_FOCUS_TIMER)
   const [detached, setDetached] = useState(false)
   const [focusKeySignal, setFocusGeminiSignal] = useState(0)
+  const lastMovedAtRef = useRef(0)
 
   // Initial load
   useEffect(() => {
@@ -125,6 +126,7 @@ export default function Panel() {
     let initialized = false
     ;(async () => {
       unlisten = await appWindow.onMoved(() => {
+        lastMovedAtRef.current = Date.now()
         if (!initialized) {
           initialized = true
           return
@@ -146,6 +148,13 @@ export default function Panel() {
           return
         }
         if (!hasBeenFocused) return
+        // Crossing a monitor boundary while dragging the panel can transiently
+        // steal focus; suppress close in that window and restore focus so the
+        // next genuine outside-click still closes normally.
+        if (Date.now() - lastMovedAtRef.current < 700) {
+          await appWindow.setFocus().catch(() => {})
+          return
+        }
         hasBeenFocused = false
         await emit('orbit:panel-closed')
         await invoke('close_panel').catch(() => {})
