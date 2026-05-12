@@ -1170,15 +1170,19 @@ fn position_default(window: &tauri::WebviewWindow) {
 
 const PET_OPTIONS: &[(&str, &str)] = &[
     ("pet:pico", "🤖 피코"),
-    ("pet:cat", "🐱 고양이"),
+    ("pet:mofu", "🧡 모푸"),
+    ("pet:sprout", "🌱 새싹"),
+    ("pet:nova", "🛰️ 노바"),
+    ("pet:mochi", "🍡 모치"),
     ("pet:rabbit", "🐰 토끼"),
     ("pet:hedgehog", "🦔 고슴도치"),
     ("pet:raccoon", "🦝 너구리"),
     ("pet:unicorn", "🦄 유니콘"),
-    ("pet:dog", "🐕 강아지"),
-    ("pet:panda", "🐼 판다"),
-    ("pet:lion", "🦁 사자"),
-    ("pet:dragon", "🐉 드래곤"),
+    // ("pet:cat", "🐱 고양이"),
+    // ("pet:dog", "🐕 강아지"),
+    // ("pet:panda", "🐼 판다"),
+    // ("pet:lion", "🦁 사자"),
+    // ("pet:dragon", "🐉 드래곤"),
 ];
 
 fn refresh_tray_menu(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {

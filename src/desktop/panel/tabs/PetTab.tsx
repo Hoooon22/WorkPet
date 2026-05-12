@@ -12,15 +12,19 @@ interface Props {
 
 const PET_META: Record<PetId, { emoji: string; label: string }> = {
   pico: { emoji: '🤖', label: '피코' },
-  cat: { emoji: '🐱', label: '고양이' },
+  mofu: { emoji: '🧡', label: '모푸' },
+  sprout: { emoji: '🌱', label: '새싹' },
+  nova: { emoji: '🛰️', label: '노바' },
+  mochi: { emoji: '🍡', label: '모치' },
   rabbit: { emoji: '🐰', label: '토끼' },
   hedgehog: { emoji: '🦔', label: '고슴도치' },
   raccoon: { emoji: '🦝', label: '너구리' },
   unicorn: { emoji: '🦄', label: '유니콘' },
-  dog: { emoji: '🐕', label: '강아지' },
-  panda: { emoji: '🐼', label: '판다' },
-  lion: { emoji: '🦁', label: '사자' },
-  dragon: { emoji: '🐉', label: '드래곤' },
+  // cat: { emoji: '🐱', label: '고양이' },
+  // dog: { emoji: '🐕', label: '강아지' },
+  // panda: { emoji: '🐼', label: '판다' },
+  // lion: { emoji: '🦁', label: '사자' },
+  // dragon: { emoji: '🐉', label: '드래곤' },
 }
 
 const SIZE_LABELS: Record<PetSize, string> = {

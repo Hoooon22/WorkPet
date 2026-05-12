@@ -44,16 +44,16 @@ export interface GeminiResponse {
 export type PetState = 'idle' | 'alert' | 'dismissed'
 
 export type LottiePetId =
-  | 'cat'
+  // | 'cat'
   | 'rabbit'
   | 'hedgehog'
   | 'raccoon'
   | 'unicorn'
-  | 'dog'
-  | 'panda'
-  | 'lion'
-  | 'dragon'
-export type SvgPetId = 'pico'
+// | 'dog'
+// | 'panda'
+// | 'lion'
+// | 'dragon'
+export type SvgPetId = 'pico' | 'mofu' | 'sprout' | 'nova' | 'mochi'
 export type PetId = LottiePetId | SvgPetId
 
 export type PetSize = 'small' | 'medium' | 'large'

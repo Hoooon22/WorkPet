@@ -5,26 +5,26 @@ import type { LottieRefCurrentProps } from 'lottie-react'
 import type { BMEnterFrameEvent } from 'lottie-web'
 import type { LottiePetId } from '../../shared/types'
 
-import catLottie from '../../assets/lottie/idle.json'
+// import catLottie from '../../assets/lottie/idle.json'
 import rabbitLottie from '../../assets/lottie/pets/rabbit.json'
 import hedgehogLottie from '../../assets/lottie/pets/hedgehog.json'
 import raccoonLottie from '../../assets/lottie/pets/raccoon.json'
 import unicornLottie from '../../assets/lottie/pets/unicorn.json'
-import dogLottie from '../../assets/lottie/pets/dog.json'
-import pandaLottie from '../../assets/lottie/pets/panda.json'
-import lionLottie from '../../assets/lottie/pets/lion.json'
-import dragonLottie from '../../assets/lottie/pets/dragon.json'
+// import dogLottie from '../../assets/lottie/pets/dog.json'
+// import pandaLottie from '../../assets/lottie/pets/panda.json'
+// import lionLottie from '../../assets/lottie/pets/lion.json'
+// import dragonLottie from '../../assets/lottie/pets/dragon.json'
 
 const LOTTIE_MAP: Record<LottiePetId, object> = {
-  cat: catLottie,
+  // cat: catLottie,
   rabbit: rabbitLottie,
   hedgehog: hedgehogLottie,
   raccoon: raccoonLottie,
   unicorn: unicornLottie,
-  dog: dogLottie,
-  panda: pandaLottie,
-  lion: lionLottie,
-  dragon: dragonLottie,
+  // dog: dogLottie,
+  // panda: pandaLottie,
+  // lion: lionLottie,
+  // dragon: dragonLottie,
 }
 
 // Walking variants are auto-discovered: drop `<petId>.json` into
@@ -49,15 +49,15 @@ const LOTTIE_REST_FRAME: Partial<Record<LottiePetId, number>> = {
 }
 
 export const LOTTIE_PET_IDS: LottiePetId[] = [
-  'cat',
+  // 'cat',
   'rabbit',
   'hedgehog',
   'raccoon',
   'unicorn',
-  'dog',
-  'panda',
-  'lion',
-  'dragon',
+  // 'dog',
+  // 'panda',
+  // 'lion',
+  // 'dragon',
 ]
 
 export function isLottiePetId(s: unknown): s is LottiePetId {

@@ -1,46 +1,48 @@
-/* PICO — robot character animations
- * Sourced from Work-Pet Orbit Design System (PICO Character Sheet).
+/* Work-Pet character animations
+ * Sourced from Work-Pet Orbit Design System (PICO + MOFU / SPROUT / NOVA / MOCHI).
+ * All candidate pets share PICO's skeleton anchors (shoulders, hips, antenna pivot)
+ * so a single set of keyframes drives every character via the .wp-char class.
  */
 
-.pico { display: block; }
+.wp-char { display: block; }
 /* body-wrap pivots at its own center-bottom (feet). Limbs/head/antenna
  * use SVG viewport coordinates (default transform-box: view-box) so the
  * px values name actual joint positions in the 240x340 viewBox. */
-.pico .body-wrap { transform-box: fill-box; transform-origin: center bottom; }
-.pico .head { transform-origin: 120px 145px; }
-.pico .arm-left { transform-origin: 78px 170px; }
-.pico .arm-right { transform-origin: 162px 170px; }
-.pico .leg-left { transform-origin: 102px 234px; }
-.pico .leg-right { transform-origin: 138px 234px; }
-.pico .antenna { transform-origin: 120px 48px; }
-.pico .antenna-bulb { transform-box: fill-box; transform-origin: center; }
-.pico .ground-shadow { fill: rgba(0, 0, 0, 0.45); }
+.wp-char .body-wrap { transform-box: fill-box; transform-origin: center bottom; }
+.wp-char .head { transform-origin: 120px 145px; }
+.wp-char .arm-left { transform-origin: 78px 170px; }
+.wp-char .arm-right { transform-origin: 162px 170px; }
+.wp-char .leg-left { transform-origin: 102px 234px; }
+.wp-char .leg-right { transform-origin: 138px 234px; }
+.wp-char .antenna { transform-origin: 120px 48px; }
+.wp-char .antenna-bulb { transform-box: fill-box; transform-origin: center; }
+.wp-char .ground-shadow { fill: rgba(0, 0, 0, 0.45); }
 
-.pico .eye, .pico .eye-line, .pico .eye-arc, .pico .eye-big,
-.pico .mouth, .pico .mouth-arc, .pico .mouth-open, .pico .mouth-o,
-.pico .qmark, .pico .qmark-dot, .pico .excl, .pico .heart-eye {
+.wp-char .eye, .wp-char .eye-line, .wp-char .eye-arc, .wp-char .eye-big,
+.wp-char .mouth, .wp-char .mouth-arc, .wp-char .mouth-open, .wp-char .mouth-o,
+.wp-char .qmark, .wp-char .qmark-dot, .wp-char .excl, .wp-char .heart-eye {
   fill: #7dd3fc; stroke: none;
 }
-.pico .eye-arc, .pico .mouth-arc, .pico .qmark {
+.wp-char .eye-arc, .wp-char .mouth-arc, .wp-char .qmark {
   fill: none; stroke: #7dd3fc; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round;
 }
-.pico .blush { fill: #f472b6; opacity: 0.85; }
-.pico .tear { fill: #93c5fd; }
-.pico .zzz { fill: #cbd5e1; font-family: inherit; font-weight: 800; font-size: 14px; }
-.pico .brow { fill: #ef4444; }
-.pico .heart-eye { fill: #f472b6; }
-.pico .core-pulse { transform-origin: 120px 194px; transform-box: fill-box; }
-.pico .antenna-glow { transform-origin: center; transform-box: fill-box; }
+.wp-char .blush { fill: #f472b6; opacity: 0.85; }
+.wp-char .tear { fill: #93c5fd; }
+.wp-char .zzz { fill: #cbd5e1; font-family: inherit; font-weight: 800; font-size: 14px; }
+.wp-char .brow { fill: #ef4444; }
+.wp-char .heart-eye { fill: #f472b6; }
+.wp-char .core-pulse { transform-origin: 120px 194px; transform-box: fill-box; }
+.wp-char .antenna-glow { transform-origin: center; transform-box: fill-box; }
 
-.pico .arm-left { transform: rotate(-6deg); }
-.pico .arm-right { transform: rotate(6deg); }
+.wp-char .arm-left { transform: rotate(-6deg); }
+.wp-char .arm-right { transform: rotate(6deg); }
 
 /* === idle === */
-.pico[data-action="idle"] .body-wrap { animation: pico-bob 4.8s ease-in-out infinite; }
-.pico[data-action="idle"] .antenna-bulb { animation: pico-bulb-soft 3.6s ease-in-out infinite; }
-.pico[data-action="idle"] .antenna-glow { animation: pico-glow-soft 3.6s ease-in-out infinite; }
-.pico[data-action="idle"] .eye { animation: pico-blink 6.75s ease-in-out infinite; transform-origin: center; transform-box: fill-box; }
-.pico[data-action="idle"] .core-pulse { animation: pico-core-pulse 3.9s ease-in-out infinite; }
+.wp-char[data-action="idle"] .body-wrap { animation: pico-bob 4.8s ease-in-out infinite; }
+.wp-char[data-action="idle"] .antenna-bulb { animation: pico-bulb-soft 3.6s ease-in-out infinite; }
+.wp-char[data-action="idle"] .antenna-glow { animation: pico-glow-soft 3.6s ease-in-out infinite; }
+.wp-char[data-action="idle"] .eye { animation: pico-blink 6.75s ease-in-out infinite; transform-origin: center; transform-box: fill-box; }
+.wp-char[data-action="idle"] .core-pulse { animation: pico-core-pulse 3.9s ease-in-out infinite; }
 
 @keyframes pico-bob {
   0%, 100% { transform: translateY(0); }
@@ -64,13 +66,13 @@
 }
 
 /* === walking === */
-.pico[data-action="walking"] .body-wrap { animation: pico-walk-bob 0.7s ease-in-out infinite; }
-.pico[data-action="walking"] .leg-left { animation: pico-leg-swing 0.7s ease-in-out infinite; }
-.pico[data-action="walking"] .leg-right { animation: pico-leg-swing 0.7s ease-in-out infinite reverse; }
-.pico[data-action="walking"] .arm-left { animation: pico-arm-swing 0.7s ease-in-out infinite reverse; }
-.pico[data-action="walking"] .arm-right { animation: pico-arm-swing 0.7s ease-in-out infinite; }
-.pico[data-action="walking"] .head { animation: pico-head-bob 0.7s ease-in-out infinite; }
-.pico[data-action="walking"] .antenna-bulb { animation: pico-bulb-soft 1.2s ease-in-out infinite; }
+.wp-char[data-action="walking"] .body-wrap { animation: pico-walk-bob 0.7s ease-in-out infinite; }
+.wp-char[data-action="walking"] .leg-left { animation: pico-leg-swing 0.7s ease-in-out infinite; }
+.wp-char[data-action="walking"] .leg-right { animation: pico-leg-swing 0.7s ease-in-out infinite reverse; }
+.wp-char[data-action="walking"] .arm-left { animation: pico-arm-swing 0.7s ease-in-out infinite reverse; }
+.wp-char[data-action="walking"] .arm-right { animation: pico-arm-swing 0.7s ease-in-out infinite; }
+.wp-char[data-action="walking"] .head { animation: pico-head-bob 0.7s ease-in-out infinite; }
+.wp-char[data-action="walking"] .antenna-bulb { animation: pico-bulb-soft 1.2s ease-in-out infinite; }
 
 @keyframes pico-walk-bob {
   0%, 100% { transform: translateY(0); }
@@ -92,14 +94,14 @@
 }
 
 /* === sleep === */
-.pico[data-action="sleep"] .body-wrap { animation: pico-sleep-breathe 6.3s ease-in-out infinite; }
-.pico[data-action="sleep"] .head { animation: pico-sleep-tilt 6.3s ease-in-out infinite; }
-.pico[data-action="sleep"] .antenna-bulb { animation: pico-bulb-soft 6.3s ease-in-out infinite; }
-.pico[data-action="sleep"] .antenna-glow { opacity: 0.1; }
-.pico[data-action="sleep"] .core-pulse { animation: pico-core-pulse 6.3s ease-in-out infinite; }
-.pico[data-action="sleep"] .zzz-1 { animation: pico-zzz-float 4.5s ease-in infinite; transform-origin: center; transform-box: fill-box; }
-.pico[data-action="sleep"] .zzz-2 { animation: pico-zzz-float 4.5s ease-in infinite 1.5s; transform-origin: center; transform-box: fill-box; }
-.pico[data-action="sleep"] .zzz-3 { animation: pico-zzz-float 4.5s ease-in infinite 3s; transform-origin: center; transform-box: fill-box; }
+.wp-char[data-action="sleep"] .body-wrap { animation: pico-sleep-breathe 6.3s ease-in-out infinite; }
+.wp-char[data-action="sleep"] .head { animation: pico-sleep-tilt 6.3s ease-in-out infinite; }
+.wp-char[data-action="sleep"] .antenna-bulb { animation: pico-bulb-soft 6.3s ease-in-out infinite; }
+.wp-char[data-action="sleep"] .antenna-glow { opacity: 0.1; }
+.wp-char[data-action="sleep"] .core-pulse { animation: pico-core-pulse 6.3s ease-in-out infinite; }
+.wp-char[data-action="sleep"] .zzz-1 { animation: pico-zzz-float 4.5s ease-in infinite; transform-origin: center; transform-box: fill-box; }
+.wp-char[data-action="sleep"] .zzz-2 { animation: pico-zzz-float 4.5s ease-in infinite 1.5s; transform-origin: center; transform-box: fill-box; }
+.wp-char[data-action="sleep"] .zzz-3 { animation: pico-zzz-float 4.5s ease-in infinite 3s; transform-origin: center; transform-box: fill-box; }
 
 @keyframes pico-sleep-breathe {
   0%, 100% { transform: translateY(0) scale(1); }
@@ -116,10 +118,10 @@
 }
 
 /* === alert === */
-.pico[data-action="alert"] .body-wrap { animation: pico-alert-shake 0.27s ease-in-out infinite; }
-.pico[data-action="alert"] .antenna-bulb { animation: pico-alert-flash 0.6s ease-in-out infinite; }
-.pico[data-action="alert"] .antenna-glow { animation: pico-alert-glow 0.6s ease-in-out infinite; }
-.pico[data-action="alert"] .excl { fill: #fbbf24; animation: pico-excl-flash 0.6s ease-in-out infinite; }
+.wp-char[data-action="alert"] .body-wrap { animation: pico-alert-shake 0.27s ease-in-out infinite; }
+.wp-char[data-action="alert"] .antenna-bulb { animation: pico-alert-flash 0.6s ease-in-out infinite; }
+.wp-char[data-action="alert"] .antenna-glow { animation: pico-alert-glow 0.6s ease-in-out infinite; }
+.wp-char[data-action="alert"] .excl { fill: #fbbf24; animation: pico-excl-flash 0.6s ease-in-out infinite; }
 
 @keyframes pico-alert-shake {
   0%, 100% { transform: translateX(0); }
@@ -140,13 +142,13 @@
 }
 
 /* === smile: little hop & shoulder wiggle === */
-.pico[data-action="smile"] .body-wrap { animation: pico-hop 2.4s ease-in-out infinite; }
-.pico[data-action="smile"] .arm-left { animation: pico-shoulder-wiggle-l 2.4s ease-in-out infinite; }
-.pico[data-action="smile"] .arm-right { animation: pico-shoulder-wiggle-r 2.4s ease-in-out infinite; }
-.pico[data-action="smile"] .head { animation: pico-head-tilt 2.4s ease-in-out infinite; }
-.pico[data-action="smile"] .antenna-bulb { fill: #f472b6; animation: pico-bulb-pink 2.4s ease-in-out infinite; }
-.pico[data-action="smile"] .antenna-glow { fill: #f472b6; animation: pico-glow-soft 2.4s ease-in-out infinite; }
-.pico[data-action="smile"] .blush { animation: pico-blush-flicker 2.4s ease-in-out infinite; transform-origin: center; transform-box: fill-box; }
+.wp-char[data-action="smile"] .body-wrap { animation: pico-hop 2.4s ease-in-out infinite; }
+.wp-char[data-action="smile"] .arm-left { animation: pico-shoulder-wiggle-l 2.4s ease-in-out infinite; }
+.wp-char[data-action="smile"] .arm-right { animation: pico-shoulder-wiggle-r 2.4s ease-in-out infinite; }
+.wp-char[data-action="smile"] .head { animation: pico-head-tilt 2.4s ease-in-out infinite; }
+.wp-char[data-action="smile"] .antenna-bulb { fill: #f472b6; animation: pico-bulb-pink 2.4s ease-in-out infinite; }
+.wp-char[data-action="smile"] .antenna-glow { fill: #f472b6; animation: pico-glow-soft 2.4s ease-in-out infinite; }
+.wp-char[data-action="smile"] .blush { animation: pico-blush-flicker 2.4s ease-in-out infinite; transform-origin: center; transform-box: fill-box; }
 
 @keyframes pico-hop {
   0%, 100% { transform: translateY(0); }
@@ -175,13 +177,13 @@
 }
 
 /* === cry: shaky body, droopy head, tears falling === */
-.pico[data-action="cry"] .body-wrap { animation: pico-cry-shake 0.68s ease-in-out infinite; }
-.pico[data-action="cry"] .head { animation: pico-head-droop 3.9s ease-in-out infinite; }
-.pico[data-action="cry"] .antenna { animation: pico-antenna-droop 3.9s ease-in-out infinite; transform-origin: 120px 48px; }
-.pico[data-action="cry"] .antenna-bulb { fill: #94a3b8; }
-.pico[data-action="cry"] .antenna-glow { opacity: 0; }
-.pico[data-action="cry"] .tear-1 { animation: pico-tear-fall 2.1s ease-in infinite; }
-.pico[data-action="cry"] .tear-2 { animation: pico-tear-fall 2.1s ease-in infinite 0.75s; }
+.wp-char[data-action="cry"] .body-wrap { animation: pico-cry-shake 0.68s ease-in-out infinite; }
+.wp-char[data-action="cry"] .head { animation: pico-head-droop 3.9s ease-in-out infinite; }
+.wp-char[data-action="cry"] .antenna { animation: pico-antenna-droop 3.9s ease-in-out infinite; transform-origin: 120px 48px; }
+.wp-char[data-action="cry"] .antenna-bulb { fill: #94a3b8; }
+.wp-char[data-action="cry"] .antenna-glow { opacity: 0; }
+.wp-char[data-action="cry"] .tear-1 { animation: pico-tear-fall 2.1s ease-in infinite; }
+.wp-char[data-action="cry"] .tear-2 { animation: pico-tear-fall 2.1s ease-in infinite 0.75s; }
 
 @keyframes pico-cry-shake {
   0%, 100% { transform: translateX(0) rotate(0); }
@@ -203,11 +205,11 @@
 }
 
 /* === wave: right arm raised, swings === */
-.pico[data-action="wave"] .arm-right { animation: pico-arm-wave 1.5s ease-in-out infinite; }
-.pico[data-action="wave"] .arm-left { transform: rotate(-6deg); }
-.pico[data-action="wave"] .body-wrap { animation: pico-bob 3.6s ease-in-out infinite; }
-.pico[data-action="wave"] .head { animation: pico-head-tilt 3s ease-in-out infinite; }
-.pico[data-action="wave"] .antenna-bulb { animation: pico-bulb-soft 1.5s ease-in-out infinite; }
+.wp-char[data-action="wave"] .arm-right { animation: pico-arm-wave 1.5s ease-in-out infinite; }
+.wp-char[data-action="wave"] .arm-left { transform: rotate(-6deg); }
+.wp-char[data-action="wave"] .body-wrap { animation: pico-bob 3.6s ease-in-out infinite; }
+.wp-char[data-action="wave"] .head { animation: pico-head-tilt 3s ease-in-out infinite; }
+.wp-char[data-action="wave"] .antenna-bulb { animation: pico-bulb-soft 1.5s ease-in-out infinite; }
 
 @keyframes pico-arm-wave {
   0%, 100% { transform: rotate(165deg); }
@@ -215,11 +217,11 @@
 }
 
 /* === love: hearts float, pink antenna, gentle bob === */
-.pico[data-action="love"] .body-wrap { animation: pico-love-bob 2.7s ease-in-out infinite; }
-.pico[data-action="love"] .heart-eye { animation: pico-heart-throb 1.5s ease-in-out infinite; transform-origin: center; transform-box: fill-box; }
-.pico[data-action="love"] .antenna-bulb { fill: #ec4899; animation: pico-bulb-pink 2.1s ease-in-out infinite; }
-.pico[data-action="love"] .antenna-glow { fill: #ec4899; animation: pico-glow-soft 2.1s ease-in-out infinite; }
-.pico[data-action="love"] .head { animation: pico-head-tilt 3s ease-in-out infinite; }
+.wp-char[data-action="love"] .body-wrap { animation: pico-love-bob 2.7s ease-in-out infinite; }
+.wp-char[data-action="love"] .heart-eye { animation: pico-heart-throb 1.5s ease-in-out infinite; transform-origin: center; transform-box: fill-box; }
+.wp-char[data-action="love"] .antenna-bulb { fill: #ec4899; animation: pico-bulb-pink 2.1s ease-in-out infinite; }
+.wp-char[data-action="love"] .antenna-glow { fill: #ec4899; animation: pico-glow-soft 2.1s ease-in-out infinite; }
+.wp-char[data-action="love"] .head { animation: pico-head-tilt 3s ease-in-out infinite; }
 
 @keyframes pico-love-bob {
   0%, 100% { transform: translateY(0) rotate(-1.5deg); }
@@ -231,14 +233,14 @@
 }
 
 /* === dance: swing torso, arms up alternating, leg lift === */
-.pico[data-action="dance"] .body-wrap { animation: pico-dance-sway 1.2s ease-in-out infinite; }
-.pico[data-action="dance"] .head { animation: pico-dance-head 1.2s ease-in-out infinite; }
-.pico[data-action="dance"] .arm-left { animation: pico-dance-arm-l 1.2s ease-in-out infinite; }
-.pico[data-action="dance"] .arm-right { animation: pico-dance-arm-r 1.2s ease-in-out infinite; }
-.pico[data-action="dance"] .leg-left { animation: pico-dance-leg-l 1.2s ease-in-out infinite; }
-.pico[data-action="dance"] .leg-right { animation: pico-dance-leg-r 1.2s ease-in-out infinite; }
-.pico[data-action="dance"] .antenna-bulb { animation: pico-bulb-rainbow 1.2s linear infinite; }
-.pico[data-action="dance"] .antenna-glow { animation: pico-glow-soft 1.2s ease-in-out infinite; }
+.wp-char[data-action="dance"] .body-wrap { animation: pico-dance-sway 1.2s ease-in-out infinite; }
+.wp-char[data-action="dance"] .head { animation: pico-dance-head 1.2s ease-in-out infinite; }
+.wp-char[data-action="dance"] .arm-left { animation: pico-dance-arm-l 1.2s ease-in-out infinite; }
+.wp-char[data-action="dance"] .arm-right { animation: pico-dance-arm-r 1.2s ease-in-out infinite; }
+.wp-char[data-action="dance"] .leg-left { animation: pico-dance-leg-l 1.2s ease-in-out infinite; }
+.wp-char[data-action="dance"] .leg-right { animation: pico-dance-leg-r 1.2s ease-in-out infinite; }
+.wp-char[data-action="dance"] .antenna-bulb { animation: pico-bulb-rainbow 1.2s linear infinite; }
+.wp-char[data-action="dance"] .antenna-glow { animation: pico-glow-soft 1.2s ease-in-out infinite; }
 
 @keyframes pico-dance-sway {
   0%, 100% { transform: rotate(-3deg) translateY(0); }
@@ -273,13 +275,13 @@
 }
 
 /* === think: head tilt, arm to chin, ? blink === */
-.pico[data-action="think"] .head { animation: pico-think-tilt 4.5s ease-in-out infinite; }
-.pico[data-action="think"] .arm-right { transform: rotate(-110deg); }
-.pico[data-action="think"] .arm-left { transform: rotate(-6deg); }
-.pico[data-action="think"] .body-wrap { animation: pico-bob 4.8s ease-in-out infinite; }
-.pico[data-action="think"] .qmark { animation: pico-qmark-pulse 2.1s ease-in-out infinite; transform-origin: 140px 100px; transform-box: fill-box; }
-.pico[data-action="think"] .qmark-dot { animation: pico-qmark-pulse 2.1s ease-in-out infinite; transform-origin: 140px 116px; transform-box: fill-box; }
-.pico[data-action="think"] .antenna-bulb { animation: pico-bulb-soft 2.1s ease-in-out infinite; }
+.wp-char[data-action="think"] .head { animation: pico-think-tilt 4.5s ease-in-out infinite; }
+.wp-char[data-action="think"] .arm-right { transform: rotate(-110deg); }
+.wp-char[data-action="think"] .arm-left { transform: rotate(-6deg); }
+.wp-char[data-action="think"] .body-wrap { animation: pico-bob 4.8s ease-in-out infinite; }
+.wp-char[data-action="think"] .qmark { animation: pico-qmark-pulse 2.1s ease-in-out infinite; transform-origin: 140px 100px; transform-box: fill-box; }
+.wp-char[data-action="think"] .qmark-dot { animation: pico-qmark-pulse 2.1s ease-in-out infinite; transform-origin: 140px 116px; transform-box: fill-box; }
+.wp-char[data-action="think"] .antenna-bulb { animation: pico-bulb-soft 2.1s ease-in-out infinite; }
 
 @keyframes pico-think-tilt {
   0%, 100% { transform: rotate(-6deg); }
@@ -291,11 +293,11 @@
 }
 
 /* === surprise: jump, big eyes pop === */
-.pico[data-action="surprise"] .body-wrap { animation: pico-surprise-jump 2.25s ease-in-out infinite; }
-.pico[data-action="surprise"] .arm-left { animation: pico-surprise-arm-l 2.25s ease-in-out infinite; }
-.pico[data-action="surprise"] .arm-right { animation: pico-surprise-arm-r 2.25s ease-in-out infinite; }
-.pico[data-action="surprise"] .eye-big { animation: pico-eye-pop 2.25s ease-in-out infinite; transform-origin: center; transform-box: fill-box; }
-.pico[data-action="surprise"] .antenna-bulb { animation: pico-bulb-soft 2.25s ease-in-out infinite; }
+.wp-char[data-action="surprise"] .body-wrap { animation: pico-surprise-jump 2.25s ease-in-out infinite; }
+.wp-char[data-action="surprise"] .arm-left { animation: pico-surprise-arm-l 2.25s ease-in-out infinite; }
+.wp-char[data-action="surprise"] .arm-right { animation: pico-surprise-arm-r 2.25s ease-in-out infinite; }
+.wp-char[data-action="surprise"] .eye-big { animation: pico-eye-pop 2.25s ease-in-out infinite; transform-origin: center; transform-box: fill-box; }
+.wp-char[data-action="surprise"] .antenna-bulb { animation: pico-bulb-soft 2.25s ease-in-out infinite; }
 
 @keyframes pico-surprise-jump {
   0%, 100% { transform: translateY(0); }
@@ -316,13 +318,13 @@
 }
 
 /* === angry: red glow, head shake, tense arms === */
-.pico[data-action="angry"] .head { animation: pico-angry-shake 0.38s ease-in-out infinite; }
-.pico[data-action="angry"] .body-wrap { animation: pico-cry-shake 0.45s ease-in-out infinite; }
-.pico[data-action="angry"] .antenna-bulb { fill: #ef4444; animation: pico-angry-flash 0.9s ease-in-out infinite; }
-.pico[data-action="angry"] .antenna-glow { fill: #ef4444; animation: pico-glow-soft 0.9s ease-in-out infinite; }
-.pico[data-action="angry"] .arm-left { transform: rotate(-12deg); }
-.pico[data-action="angry"] .arm-right { transform: rotate(12deg); }
-.pico[data-action="angry"] .brow { animation: pico-brow-throb 0.9s ease-in-out infinite; }
+.wp-char[data-action="angry"] .head { animation: pico-angry-shake 0.38s ease-in-out infinite; }
+.wp-char[data-action="angry"] .body-wrap { animation: pico-cry-shake 0.45s ease-in-out infinite; }
+.wp-char[data-action="angry"] .antenna-bulb { fill: #ef4444; animation: pico-angry-flash 0.9s ease-in-out infinite; }
+.wp-char[data-action="angry"] .antenna-glow { fill: #ef4444; animation: pico-glow-soft 0.9s ease-in-out infinite; }
+.wp-char[data-action="angry"] .arm-left { transform: rotate(-12deg); }
+.wp-char[data-action="angry"] .arm-right { transform: rotate(12deg); }
+.wp-char[data-action="angry"] .brow { animation: pico-brow-throb 0.9s ease-in-out infinite; }
 
 @keyframes pico-angry-shake {
   0%, 100% { transform: rotate(-1deg); }

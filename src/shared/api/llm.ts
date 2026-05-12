@@ -33,15 +33,19 @@ const DEFAULT_MODELS: Record<Exclude<LLMProvider, 'compat'>, string> = {
 // "너의 종족은 X야" 라인을 만들어 LLM이 종족을 환각하지 않도록 고정한다.
 const PET_SPECIES_KO: Record<PetId, string> = {
   pico: 'Orbit의 마스코트 로봇 캐릭터',
-  cat: '고양이',
+  mofu: '복슬복슬한 토끼-정령 (모푸)',
+  sprout: '머리에 새싹이 자라는 식물 아이 (새싹)',
+  nova: '보라색 우주복을 입은 꼬마 우주비행사 (노바)',
+  mochi: '말랑말랑한 모치 영혼 (모치)',
   rabbit: '토끼',
   hedgehog: '고슴도치',
   raccoon: '너구리',
   unicorn: '유니콘',
-  dog: '강아지',
-  panda: '판다',
-  lion: '사자',
-  dragon: '용',
+  // cat: '고양이',
+  // dog: '강아지',
+  // panda: '판다',
+  // lion: '사자',
+  // dragon: '용',
 }
 
 // 종족별 기본 이름. 트레이 메뉴로 펫을 바꾼 직후엔 가챠 기반의
@@ -49,15 +53,19 @@ const PET_SPECIES_KO: Record<PetId, string> = {
 // 호출자가 petName을 비워서 넘기면 이 표로 폴백한다.
 const PET_DEFAULT_NAMES_KO: Record<PetId, string> = {
   pico: '피코',
-  cat: '고양이',
+  mofu: '모푸',
+  sprout: '새싹',
+  nova: '노바',
+  mochi: '모치',
   rabbit: '토끼',
   hedgehog: '고슴도치',
   raccoon: '너구리',
   unicorn: '유니콘',
-  dog: '강아지',
-  panda: '판다',
-  lion: '사자',
-  dragon: '드래곤',
+  // cat: '고양이',
+  // dog: '강아지',
+  // panda: '판다',
+  // lion: '사자',
+  // dragon: '드래곤',
 }
 
 // 사용자에게 노출되지 않는 펫의 기본 시스템 프롬프트.

@@ -12,13 +12,13 @@ type Phase = 'intro' | 'rolling' | 'revealed'
 
 const ROSTER: { petId: PetId; name: string; grade: Grade }[] = [
   { petId: 'rabbit', name: '토끼', grade: 'COMMON' },
-  { petId: 'dog', name: '강아지', grade: 'COMMON' },
+  { petId: 'mofu', name: '모푸', grade: 'COMMON' },
   { petId: 'hedgehog', name: '고슴도치', grade: 'RARE' },
-  { petId: 'panda', name: '판다', grade: 'RARE' },
+  { petId: 'mochi', name: '모치', grade: 'RARE' },
   { petId: 'raccoon', name: '너구리', grade: 'EPIC' },
-  { petId: 'lion', name: '사자', grade: 'EPIC' },
+  { petId: 'sprout', name: '새싹', grade: 'EPIC' },
   { petId: 'unicorn', name: '유니콘', grade: 'LEGENDARY' },
-  { petId: 'dragon', name: '드래곤', grade: 'LEGENDARY' },
+  { petId: 'nova', name: '노바', grade: 'LEGENDARY' },
   { petId: 'pico', name: '피코', grade: 'LEGENDARY' },
 ]
 
@@ -183,6 +183,9 @@ export default function Gacha() {
             </h1>
             <p style={{ fontSize: 16, color: '#cbd5e1', marginBottom: 32 }}>
               9종 펫 중 한 마리가 당신의 파트너가 돼요.
+            </p>
+            <p style={{ fontSize: 13, color: '#94a3b8', marginBottom: 32 }}>
+              피코 · 모푸 · 새싹 · 노바 · 모치 · 토끼 · 고슴도치 · 너구리 · 유니콘
             </p>
             <motion.button
               whileHover={{ scale: 1.05 }}

@@ -1,18 +1,18 @@
 import type { LottiePetId, PetId, SvgPetId } from './types'
 
 export const LOTTIE_PET_IDS: LottiePetId[] = [
-  'cat',
+  // 'cat',
   'rabbit',
   'hedgehog',
   'raccoon',
   'unicorn',
-  'dog',
-  'panda',
-  'lion',
-  'dragon',
+  // 'dog',
+  // 'panda',
+  // 'lion',
+  // 'dragon',
 ]
 
-export const SVG_PET_IDS: SvgPetId[] = ['pico']
+export const SVG_PET_IDS: SvgPetId[] = ['pico', 'mofu', 'sprout', 'nova', 'mochi']
 
 export const ALL_PET_IDS: PetId[] = [...SVG_PET_IDS, ...LOTTIE_PET_IDS]
 
