@@ -15,7 +15,7 @@ import { tickClipboard } from './clipboardHistory'
 import { startUsageTracker, maybeFireEveningSummary } from './usageTracker'
 import type { BriefingPayload } from './types'
 
-const ALARM_PERIOD_MS = 60_000
+const ALARM_PERIOD_MS = 30_000
 const CLIPBOARD_PERIOD_MS = 1_500
 
 let started = false
