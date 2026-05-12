@@ -841,11 +841,13 @@ async fn open_color_picker_overlay(app: AppHandle) -> Result<(), String> {
     .await
     .map_err(|e| format!("spawn: {e}"))?;
 
-    if let Ok(cap) = capture {
-        if let Some(state) = app.try_state::<TrayState>() {
-            if let Ok(mut g) = state.color_picker_capture.lock() {
-                *g = Some(cap);
-            }
+    // If the desktop capture fails we must not show the picker overlay — the
+    // loupe canvas has no pixel data and renders solid black, which looks
+    // broken. Surface the error to the caller instead so the UI can react.
+    let cap = capture?;
+    if let Some(state) = app.try_state::<TrayState>() {
+        if let Ok(mut g) = state.color_picker_capture.lock() {
+            *g = Some(cap);
         }
     }
 

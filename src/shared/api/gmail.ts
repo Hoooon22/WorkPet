@@ -56,7 +56,11 @@ export async function fetchNewEmailsViaHistory(): Promise<EmailItem[]> {
           `&metadataHeaders=Subject&metadataHeaders=From`,
       )
       if (!r || !r.ok) return null
-      return r.json() as Promise<GmailMessage>
+      try {
+        return (await r.json()) as GmailMessage
+      } catch {
+        return null
+      }
     }),
   )
 
@@ -84,7 +88,11 @@ export async function fetchUnreadEmails(): Promise<EmailItem[]> {
           `&metadataHeaders=Subject&metadataHeaders=From`,
       )
       if (!res || !res.ok) return null
-      return res.json() as Promise<GmailMessage>
+      try {
+        return (await res.json()) as GmailMessage
+      } catch {
+        return null
+      }
     }),
   )
 

@@ -56,7 +56,13 @@ export interface PolledAlert {
 export async function fetchBriefingData(): Promise<PolledAlert | null> {
   if (!(await isSignedIn())) return null
 
-  const [events, emails] = await Promise.all([fetchTodayEvents(), fetchUnreadEmails()])
+  // allSettled: 한쪽 API가 일시적으로 throw해도 다른 쪽 결과는 계속 처리한다.
+  const [eventsResult, emailsResult] = await Promise.allSettled([
+    fetchTodayEvents(),
+    fetchUnreadEmails(),
+  ])
+  const events = eventsResult.status === 'fulfilled' ? eventsResult.value : []
+  const emails = emailsResult.status === 'fulfilled' ? emailsResult.value : []
 
   const notifiedEmailIds = (await getValue<string[]>(KEYS.NOTIFIED_EMAIL_IDS)) ?? []
   const eventAlerts =
@@ -140,7 +146,12 @@ export async function fetchBriefingData(): Promise<PolledAlert | null> {
 
 export async function fetchFullBriefing(): Promise<BriefingPayload | null> {
   if (!(await isSignedIn())) return null
-  const [allEvents, emails] = await Promise.all([fetchTodayEvents(), fetchUnreadEmails()])
+  const [eventsResult, emailsResult] = await Promise.allSettled([
+    fetchTodayEvents(),
+    fetchUnreadEmails(),
+  ])
+  const allEvents = eventsResult.status === 'fulfilled' ? eventsResult.value : []
+  const emails = emailsResult.status === 'fulfilled' ? emailsResult.value : []
   const now = Date.now()
   const remainingEvents = allEvents.filter(
     (evt) => new Date(evt.endTime).getTime() > now,
