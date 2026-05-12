@@ -324,10 +324,10 @@ async fn oauth_google_refresh(
         ("refresh_token", refresh_token.as_str()),
         ("grant_type", "refresh_token"),
     ];
-    let body = serde_urlencoded::to_string(&form).map_err(|e| format!("encode: {e}"))?;
-    let resp = http_post_form(GOOGLE_TOKEN, &body).await?;
+    let body = serde_urlencoded::to_string(&form).map_err(|e| format!("transient: encode: {e}"))?;
+    let resp = http_post_form_classified(GOOGLE_TOKEN, &body).await?;
     let token: GoogleTokenResponse = serde_json::from_str(&resp)
-        .map_err(|e| format!("parse refresh json: {e}; body={resp}"))?;
+        .map_err(|e| format!("transient: parse refresh json: {e}; body={resp}"))?;
     let expires_at_ms = chrono_now_ms() + token.expires_in * 1000;
     Ok(OauthResult {
         access_token: token.access_token,
@@ -336,6 +336,36 @@ async fn oauth_google_refresh(
         email: None,
         id_token: token.id_token,
     })
+}
+
+// Refresh-specific POST that distinguishes terminal OAuth failures
+// (invalid_grant 등 RFC 6749 §5.2) from transient ones so the client can retry.
+async fn http_post_form_classified(url: &str, body: &str) -> Result<String, String> {
+    let url = url.to_string();
+    let body = body.to_string();
+    tauri::async_runtime::spawn_blocking(move || -> Result<String, String> {
+        match ureq::post(&url)
+            .set("Content-Type", "application/x-www-form-urlencoded")
+            .send_string(&body)
+        {
+            Ok(resp) => resp.into_string().map_err(|e| format!("transient: body: {e}")),
+            Err(ureq::Error::Status(code, resp)) => {
+                let text = resp.into_string().unwrap_or_default();
+                let terminal = text.contains("\"invalid_grant\"")
+                    || text.contains("\"invalid_client\"")
+                    || text.contains("\"unauthorized_client\"")
+                    || text.contains("\"unsupported_grant_type\"");
+                if terminal {
+                    Err(format!("terminal: {code} {text}"))
+                } else {
+                    Err(format!("transient: {code} {text}"))
+                }
+            }
+            Err(e) => Err(format!("transient: {e}")),
+        }
+    })
+    .await
+    .map_err(|e| format!("transient: spawn: {e}"))?
 }
 
 #[tauri::command]

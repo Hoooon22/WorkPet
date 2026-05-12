@@ -16,6 +16,9 @@ interface OauthResult {
 }
 
 const REFRESH_BUFFER_MS = 60_000
+const REFRESH_RETRY_DELAYS_MS = [1_000, 5_000]
+
+let refreshInFlight: Promise<string | null> | null = null
 
 export async function signIn(): Promise<{ email: string | null }> {
   const result = await invoke<OauthResult>('oauth_google_signin', {
@@ -60,22 +63,44 @@ export async function getAccessToken(): Promise<string | null> {
 }
 
 export async function refreshAccessToken(): Promise<string | null> {
+  if (refreshInFlight) return refreshInFlight
+  refreshInFlight = (async () => {
+    try {
+      return await doRefreshWithRetry()
+    } finally {
+      refreshInFlight = null
+    }
+  })()
+  return refreshInFlight
+}
+
+async function doRefreshWithRetry(): Promise<string | null> {
   const refreshToken = await getValue<string>(KEYS.AUTH_REFRESH)
   if (!refreshToken) return null
-  try {
-    const result = await invoke<OauthResult>('oauth_google_refresh', {
-      clientId: OAUTH_CLIENT_ID,
-      clientSecret: OAUTH_CLIENT_SECRET,
-      refreshToken,
-    })
-    await setValue(KEYS.AUTH_TOKEN, result.access_token)
-    await setValue(KEYS.AUTH_EXPIRES, result.expires_at_ms)
-    if (result.id_token) await setValue(KEYS.AUTH_ID_TOKEN, result.id_token)
-    return result.access_token
-  } catch (err) {
-    console.warn('[orbit] refresh failed, signing out', err)
-    await signOut()
-    return null
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const result = await invoke<OauthResult>('oauth_google_refresh', {
+        clientId: OAUTH_CLIENT_ID,
+        clientSecret: OAUTH_CLIENT_SECRET,
+        refreshToken,
+      })
+      await setValue(KEYS.AUTH_TOKEN, result.access_token)
+      await setValue(KEYS.AUTH_EXPIRES, result.expires_at_ms)
+      if (result.id_token) await setValue(KEYS.AUTH_ID_TOKEN, result.id_token)
+      return result.access_token
+    } catch (err) {
+      const msg = typeof err === 'string' ? err : String(err ?? '')
+      if (msg.startsWith('terminal:')) {
+        console.warn('[orbit] refresh terminal failure, signing out', err)
+        await signOut()
+        return null
+      }
+      if (attempt >= REFRESH_RETRY_DELAYS_MS.length) {
+        console.warn('[orbit] refresh transient failures exhausted, keeping tokens', err)
+        return null
+      }
+      await new Promise((r) => setTimeout(r, REFRESH_RETRY_DELAYS_MS[attempt]))
+    }
   }
 }
 
