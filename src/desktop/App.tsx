@@ -20,11 +20,13 @@ import type {
   PetSize,
   PetState,
   FocusTimerState,
+  UsageRecord,
   WanderFrequency,
 } from '../shared/types'
 import { EMPTY_BRIEFING, IDLE_FOCUS_TIMER } from '../shared/types'
 import { isLottiePetId, isPetId } from '../shared/petCatalog'
 import { pickJosa } from '../shared/korean'
+import { formatDuration } from '../shared/usageTracker'
 import {
   getValue,
   setValue,
@@ -1627,6 +1629,20 @@ export default function App() {
         break
       case 'open-screenshot':
         void invoke('open_screenshot_overlay').catch(() => {})
+        break
+      case 'open-usage':
+        ;(async () => {
+          const record = await getValue<UsageRecord>(KEYS.USAGE_TODAY)
+          const entries = record ? Object.entries(record.apps).sort((a, b) => b[1] - a[1]) : []
+          if (entries.length === 0 || entries[0][1] < 60) {
+            showBubble('아직 오늘은 기록이 별로 없어요 ⏳', 3000)
+            playAction('wave', 3000)
+            return
+          }
+          const [topApp, topSec] = entries[0]
+          showBubble(`오늘은 ${topApp}에서 ${formatDuration(topSec)} 보내고 있어요! 📈`, 4000)
+          playAction('wave', 4000)
+        })().catch(() => {})
         break
       default:
         log('unhandled panel action', type)

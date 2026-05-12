@@ -304,7 +304,10 @@ export default function Panel() {
         {tabs.map((t) => (
           <button
             key={t.id}
-            onClick={() => setTab(t.id)}
+            onClick={() => {
+              setTab(t.id)
+              if (t.id === 'usage') action('open-usage')
+            }}
             style={{
               all: 'unset',
               cursor: 'pointer',
