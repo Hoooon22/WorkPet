@@ -824,7 +824,10 @@ async fn pick_pixel(x: i32, y: i32) -> Result<String, String> {
 
 #[tauri::command]
 fn take_color_picker_capture(state: tauri::State<'_, TrayState>) -> Option<ColorPickerCapture> {
-    state.color_picker_capture.lock().ok().and_then(|mut g| g.take())
+    // Clone, do not `take` — under React StrictMode the frontend useEffect can
+    // call this twice; the second call would otherwise see `None` and the
+    // loupe canvas would never receive the capture (renders solid black).
+    state.color_picker_capture.lock().ok().and_then(|g| g.clone())
 }
 
 #[tauri::command]
