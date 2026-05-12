@@ -39,6 +39,7 @@ import {
   getSignedInEmail,
 } from '../shared/auth'
 import { startBriefingScheduler, fetchNow } from '../shared/scheduler'
+import type { MeetingState } from '../shared/meetingMode'
 
 const appWindow = getCurrentWebviewWindow()
 
@@ -960,6 +961,37 @@ export default function App() {
         await listen('orbit:check-update', () => {
           if (cancelled) return
           void runUpdateFlow()
+        }),
+      )
+      register(
+        await listen<MeetingState>('orbit:meeting-enter', (e) => {
+          if (cancelled) return
+          const m = e.payload
+          ;(async () => {
+            const b = boundsRef.current
+            if (b) {
+              const targetX = b.maxX - 24
+              await setWindowPosition(targetX, b.groundY)
+              await setValue(KEYS.WINDOW_POSITION, { x: targetX, y: b.groundY })
+            }
+            setWanderPaused(true)
+            await setValue(KEYS.WANDER_PAUSED, true)
+            showBubble(`📞 "${m.title}" — 조용히 비켜드릴게요 😴`, 4000)
+          })().catch(() => {})
+        }),
+      )
+      register(
+        await listen<MeetingState>('orbit:meeting-exit', (e) => {
+          if (cancelled) return
+          const m = e.payload
+          ;(async () => {
+            setWanderPaused(m.prevWanderPaused)
+            await setValue(KEYS.WANDER_PAUSED, m.prevWanderPaused)
+            if (!m.prevWanderPaused) {
+              playAction('stretch', 2100)
+              showBubble('회의 끝났어요! 수고하셨어요 ☕', 3500)
+            }
+          })().catch(() => {})
         }),
       )
     })()

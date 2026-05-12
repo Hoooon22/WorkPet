@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { emit } from '@tauri-apps/api/event'
 import { invoke } from '@tauri-apps/api/core'
-import { getValue, KEYS, subscribeStorage } from '../../../shared/storage'
+import { getValue, setValue, KEYS, subscribeStorage } from '../../../shared/storage'
 import { ALL_PET_IDS } from '../../../shared/petCatalog'
 import type { PetId, PetSize, WanderFrequency } from '../../../shared/types'
 
@@ -53,6 +53,7 @@ export default function PetTab({ signedIn, action }: Props) {
   const [wanderPaused, setWanderPaused] = useState(false)
   const [wanderFreq, setWanderFreq] = useState<WanderFrequency>('normal')
   const [dismissed, setDismissed] = useState(false)
+  const [meetingMode, setMeetingMode] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -68,6 +69,8 @@ export default function PetTab({ signedIn, action }: Props) {
       if (!cancelled && isWanderFrequency(f)) setWanderFreq(f)
       const d = await getValue<boolean>(KEYS.PET_DISMISSED)
       if (!cancelled && typeof d === 'boolean') setDismissed(d)
+      const mm = await getValue<boolean>(KEYS.MEETING_MODE_ENABLED)
+      if (!cancelled && typeof mm === 'boolean') setMeetingMode(mm)
       offs.push(
         await subscribeStorage<string>(KEYS.PET_KIND, (v) => {
           if (!cancelled && v && (v as string) in PET_META) setPetKind(v as PetId)
@@ -83,6 +86,9 @@ export default function PetTab({ signedIn, action }: Props) {
         }),
         await subscribeStorage<boolean>(KEYS.PET_DISMISSED, (v) => {
           if (!cancelled) setDismissed(!!v)
+        }),
+        await subscribeStorage<boolean>(KEYS.MEETING_MODE_ENABLED, (v) => {
+          if (!cancelled) setMeetingMode(!!v)
         }),
       )
     })()
@@ -110,6 +116,11 @@ export default function PetTab({ signedIn, action }: Props) {
   const handleClearMemory = () => {
     if (!window.confirm('펫의 메모리를 모두 비울까요?\n(유저 프로필은 그대로 유지돼요)')) return
     void emit('orbit:clear-memory')
+  }
+  const handleMeetingToggle = () => {
+    const next = !meetingMode
+    setMeetingMode(next)
+    void setValue(KEYS.MEETING_MODE_ENABLED, next)
   }
 
   const current = PET_META[petKind] ?? PET_META.pico
@@ -247,6 +258,52 @@ export default function PetTab({ signedIn, action }: Props) {
             )
           })}
         </div>
+      </Section>
+
+      <Section title="회의 모드">
+        <button
+          onClick={handleMeetingToggle}
+          style={{
+            all: 'unset',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            width: '100%',
+            boxSizing: 'border-box',
+            padding: '10px 12px',
+            borderRadius: 9,
+            background: meetingMode ? '#ede9fe' : '#f9fafb',
+            border: `1px solid ${meetingMode ? '#a78bfa' : '#e5e7eb'}`,
+          }}
+        >
+          <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <span
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                color: meetingMode ? '#5b21b6' : '#374151',
+              }}
+            >
+              📞 캘린더 일정 시간엔 자동 비키기
+            </span>
+            <span style={{ fontSize: 10, color: meetingMode ? '#7c3aed' : '#9ca3af' }}>
+              일정 시작 시 우하단으로 이동 후 sleep, 끝나면 원래대로 복귀
+            </span>
+          </span>
+          <span
+            style={{
+              fontSize: 10,
+              fontWeight: 700,
+              padding: '3px 8px',
+              borderRadius: 999,
+              background: meetingMode ? '#7c3aed' : '#e5e7eb',
+              color: meetingMode ? '#fff' : '#6b7280',
+            }}
+          >
+            {meetingMode ? 'ON' : 'OFF'}
+          </span>
+        </button>
       </Section>
 
       <Section title="조작">

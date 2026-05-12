@@ -83,6 +83,8 @@ export const KEYS = {
   PANEL_FOCUS_INTENT: 'panel:focus_intent',
   USER_PROFILE: 'user:profile',
   PET_MEMORY: 'pet:memory',
+  MEETING_MODE_ENABLED: 'meeting:enabled',
+  MEETING_ACTIVE: 'meeting:active',
 } as const
 
 export type UserProfile = {

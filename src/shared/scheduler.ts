@@ -13,6 +13,7 @@ import { tickReminders } from './reminders'
 import { tickBreakReminder } from './breakReminders'
 import { tickClipboard } from './clipboardHistory'
 import { startUsageTracker, maybeFireEveningSummary } from './usageTracker'
+import { tickMeetingMode } from './meetingMode'
 import type { BriefingPayload } from './types'
 
 const ALARM_PERIOD_MS = 30_000
@@ -42,6 +43,8 @@ async function tick(): Promise<void> {
       await notifyForAlerts(polled.payload)
       await persistAndEmit(polled.payload)
     }
+
+    await tickMeetingMode()
   } catch (err) {
     console.warn('[orbit] scheduler tick failed', err)
   }
