@@ -1,6 +1,6 @@
 [package]
 name = "work-pet-orbit"
-version = "1.0.9"
+version = "1.0.10"
 description = "Work-Pet: Orbit Desktop"
 authors = ["WorkPet"]
 edition = "2021"
