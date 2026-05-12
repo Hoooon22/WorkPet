@@ -98,8 +98,26 @@ extern "C" {
 
 #[cfg(target_os = "macos")]
 fn idle_seconds_impl() -> f64 {
-    // kCGEventSourceStateHIDSystemState = 1, kCGAnyInputEventType = 0xFFFFFFFF
-    unsafe { CGEventSourceSecondsSinceLastEventType(1, 0xFFFFFFFF) }
+    // kCGEventSourceStateHIDSystemState = 1.
+    // kCGAnyInputEventType (0xFFFFFFFF)는 일부 macOS 버전에서 마우스 이동 이벤트를
+    // 누락시켜 키보드 입력에만 반응하는 것처럼 보이는 문제가 있어, 개별 이벤트
+    // 타입을 각각 조회하고 그 중 최소값을 사용한다.
+    //   kCGEventLeftMouseDown   = 1
+    //   kCGEventRightMouseDown  = 3
+    //   kCGEventMouseMoved      = 5
+    //   kCGEventKeyDown         = 10
+    //   kCGEventFlagsChanged    = 12
+    //   kCGEventScrollWheel     = 22
+    //   kCGEventOtherMouseDown  = 25
+    const EVENT_TYPES: [u32; 7] = [1, 3, 5, 10, 12, 22, 25];
+    let mut min_idle = f64::INFINITY;
+    for &t in EVENT_TYPES.iter() {
+        let s = unsafe { CGEventSourceSecondsSinceLastEventType(1, t) };
+        if s >= 0.0 && s < min_idle {
+            min_idle = s;
+        }
+    }
+    if min_idle.is_finite() { min_idle } else { 0.0 }
 }
 
 #[cfg(target_os = "windows")]
