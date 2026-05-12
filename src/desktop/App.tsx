@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { AnimatePresence } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import { getCurrentWebviewWindow, WebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { currentMonitor, primaryMonitor } from '@tauri-apps/api/window'
 import { PhysicalPosition } from '@tauri-apps/api/dpi'
@@ -382,6 +382,11 @@ export default function App() {
   const [asking, setAsking] = useState(false)
   const [questionDraft, setQuestionDraft] = useState('')
   const [askLoading, setAskLoading] = useState(false)
+  // Widget mode: pet stays invisible until an alert pops it out near the
+  // tray anchor for a short window. See showWidget/hideWidget below.
+  const [widgetMode, setWidgetMode] = useState(false)
+  const [widgetVisible, setWidgetVisible] = useState(false)
+  const [widgetBubble, setWidgetBubble] = useState<string | null>(null)
 
   const wanderActionRef = useRef<WanderPhase>('idle')
   const wanderPausedRef = useRef(false)
@@ -429,6 +434,12 @@ export default function App() {
   const isSleepyRef = useRef(false)
   const awayStartedAtRef = useRef<number | null>(null)
   const briefingRef = useRef<BriefingPayload>(EMPTY_BRIEFING)
+
+  const widgetModeRef = useRef(false)
+  const widgetVisibleRef = useRef(false)
+  const widgetQueueRef = useRef<string[]>([])
+  const widgetHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const widgetExitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const petHitRef = useRef<HTMLDivElement | null>(null)
   const bubbleRef = useRef<HTMLDivElement | null>(null)
@@ -498,6 +509,13 @@ export default function App() {
   useEffect(() => {
     briefingRef.current = briefing
   }, [briefing])
+  useEffect(() => {
+    widgetModeRef.current = widgetMode
+    void invoke('set_widget_mode_state', { enabled: widgetMode }).catch(() => {})
+  }, [widgetMode])
+  useEffect(() => {
+    widgetVisibleRef.current = widgetVisible
+  }, [widgetVisible])
 
   // ── Global ESC: dismiss bubble → ask input → panel, in that order ──
   useEffect(() => {
@@ -593,6 +611,9 @@ export default function App() {
 
       const savedFreq = await getValue<string>(KEYS.WANDER_FREQUENCY)
       if (isWanderFrequency(savedFreq)) wanderFreqRef.current = savedFreq
+
+      const savedWidget = await getValue<boolean>(KEYS.WIDGET_MODE)
+      if (typeof savedWidget === 'boolean') setWidgetMode(savedWidget)
 
       const savedActive = await getValue<GachaResult>(KEYS.ACTIVE_PET)
       if (savedActive) setActivePet(savedActive)
@@ -811,6 +832,12 @@ export default function App() {
         }),
       )
       register(
+        await listen('orbit:toggle-widget', () => {
+          if (cancelled) return
+          void toggleWidgetMode()
+        }),
+      )
+      register(
         await listen<string>('orbit:wander-freq', async (e) => {
           if (cancelled) return
           const freq = e.payload
@@ -822,7 +849,13 @@ export default function App() {
       register(
         await listen<BriefingPayload>('orbit:briefing-alert', (e) => {
           setBriefing(e.payload)
-          setPetState('alert')
+          if (widgetModeRef.current) {
+            const detailed = e.payload.urgent && e.payload.summary
+            const summary = detailed ? e.payload.summary : liveSummary(e.payload)
+            void showWidget(summary)
+          } else {
+            setPetState('alert')
+          }
         }),
       )
       register(
@@ -955,6 +988,10 @@ export default function App() {
           'orbit:reminder-fire',
           (e) => {
             if (cancelled) return
+            if (widgetModeRef.current) {
+              void showWidget(e.payload.message)
+              return
+            }
             stickyActionRef.current = null
             setStickyBubble(e.payload.message)
             playAction('peek', 2500)
@@ -1014,7 +1051,10 @@ export default function App() {
         if (cancelled) return
         if (val) {
           setBriefing(val)
-          setPetState('alert')
+          // Widget mode handles alerts via the orbit:briefing-alert event;
+          // skipping setPetState here keeps the pet sprite from re-entering
+          // 'alert' silently while the window is meant to stay hidden.
+          if (!widgetModeRef.current) setPetState('alert')
         } else {
           setBriefing(EMPTY_BRIEFING)
         }
@@ -1183,6 +1223,7 @@ export default function App() {
       const bounds = boundsRef.current
       if (!bounds) return
       if (
+        widgetModeRef.current ||
         wanderPausedRef.current ||
         panelOpenRef.current ||
         petState === 'dismissed' ||
@@ -1379,6 +1420,16 @@ export default function App() {
   // clicks it (or another sticky / focus loss / ESC takes it away). Auto-hide
   // timer is intentionally absent so the user can't miss a notification.
   useEffect(() => {
+    // Widget mode runs its own ephemeral popup flow; suppress the sticky
+    // bubble path entirely so the pet stays hidden between alerts.
+    if (widgetMode) {
+      if (alertStickyRef.current) {
+        const ours = alertStickyRef.current
+        alertStickyRef.current = null
+        setStickyBubble((prev) => (prev === ours ? null : prev))
+      }
+      return
+    }
     if (petState === 'alert' && !panelOpen) {
       // urgent 알림은 briefing.summary에 발신자·제목·일정 시간이 담겨 있어 그대로 보여준다.
       // 수동 새로고침으로 인한 비-urgent 상태는 집계 요약을 사용한다.
@@ -1399,7 +1450,7 @@ export default function App() {
       alertStickyRef.current = null
       setStickyBubble((prev) => (prev === ours ? null : prev))
     }
-  }, [petState, panelOpen, briefing])
+  }, [petState, panelOpen, briefing, widgetMode])
 
   // Forget the user-dismissed summary once we leave alert state, so the next
   // round of alerts can pop up cleanly without being suppressed by stale text.
@@ -1438,6 +1489,100 @@ export default function App() {
     if (greetingTimerRef.current) clearTimeout(greetingTimerRef.current)
     setBubbleMessage(message)
     greetingTimerRef.current = setTimeout(() => setBubbleMessage(null), durationMs)
+  }
+
+  // 6초 + 8자당 1초, 최대 15초. 긴 메시지는 더 오래 보여 사용자가 읽을 수 있게 한다.
+  function widgetDurationFor(message: string): number {
+    const extra = Math.floor(message.length / 8) * 1000
+    return Math.min(15000, 6000 + extra)
+  }
+
+  async function showWidget(message: string) {
+    if (!widgetModeRef.current) return
+    // 이미 표시 중이거나 퇴장 애니메이션 진행 중이면 큐에 적재.
+    if (widgetVisibleRef.current || widgetExitTimerRef.current) {
+      if (widgetQueueRef.current.length < 5) widgetQueueRef.current.push(message)
+      return
+    }
+    try {
+      const anchor = await invoke<[number, number]>('get_tray_anchor_position')
+      await setWindowPosition(anchor[0], anchor[1])
+    } catch (e) {
+      console.warn('[orbit] widget anchor failed', e)
+    }
+    setWidgetBubble(message)
+    setWidgetVisible(true)
+    playAction('peek', 2500)
+    if (widgetHideTimerRef.current) clearTimeout(widgetHideTimerRef.current)
+    widgetHideTimerRef.current = setTimeout(() => {
+      void hideWidget()
+    }, widgetDurationFor(message))
+  }
+
+  function hideWidget() {
+    if (widgetHideTimerRef.current) {
+      clearTimeout(widgetHideTimerRef.current)
+      widgetHideTimerRef.current = null
+    }
+    setWidgetBubble(null)
+    setWidgetVisible(false)
+    // AnimatePresence가 exit 애니메이션을 끝낼 시간을 준 뒤 큐의 다음 메시지를 처리.
+    if (widgetExitTimerRef.current) clearTimeout(widgetExitTimerRef.current)
+    widgetExitTimerRef.current = setTimeout(() => {
+      widgetExitTimerRef.current = null
+      const next = widgetQueueRef.current.shift()
+      if (next && widgetModeRef.current) {
+        void showWidget(next)
+      }
+    }, 320)
+  }
+
+  async function toggleWidgetMode() {
+    const next = !widgetModeRef.current
+    // 효과 훅이 비동기로 ref를 갱신하기 전에 동기적으로 맞춰 둔다.
+    // 토글 직후 곧바로 showWidget을 호출해도 widgetModeRef.current 가
+    // 옛 값이라 빠져나가는 일이 없도록.
+    widgetModeRef.current = next
+    setWidgetMode(next)
+    await setValue(KEYS.WIDGET_MODE, next)
+    if (next) {
+      // 진입 시: 떠 있던 말풍선/질문창/큐를 모두 정리하고 펫 스프라이트를 숨긴다.
+      dismissTransientUI()
+      if (widgetHideTimerRef.current) {
+        clearTimeout(widgetHideTimerRef.current)
+        widgetHideTimerRef.current = null
+      }
+      if (widgetExitTimerRef.current) {
+        clearTimeout(widgetExitTimerRef.current)
+        widgetExitTimerRef.current = null
+      }
+      widgetQueueRef.current = []
+      setWidgetBubble(null)
+      setWidgetVisible(false)
+      // 토글 직후 한 번 미리 보여주어 모드 진입을 시각적으로 확인시켜준다.
+      void showWidget('🪟 위젯 모드 ON — 알림이 올 때만 등장할게요')
+    } else {
+      // 해제 시: 위젯 큐/타이머를 정리하고 펫을 원래 자리로 복원.
+      if (widgetHideTimerRef.current) {
+        clearTimeout(widgetHideTimerRef.current)
+        widgetHideTimerRef.current = null
+      }
+      if (widgetExitTimerRef.current) {
+        clearTimeout(widgetExitTimerRef.current)
+        widgetExitTimerRef.current = null
+      }
+      widgetQueueRef.current = []
+      setWidgetBubble(null)
+      setWidgetVisible(false)
+      if (petStateRef.current !== 'dismissed') {
+        const b = boundsRef.current
+        if (b) {
+          const x = Math.max(b.minX, Math.min(b.maxX, posCache.x))
+          await setWindowPosition(x, b.groundY)
+        }
+        showBubble('🐾 다시 돌아왔어요!', 2500)
+      }
+    }
   }
 
   function playAction(action: PetAction, durationMs: number) {
@@ -1897,7 +2042,9 @@ export default function App() {
         : wanderAction)
 
   // Pet hidden when dismissed or signed out (no signed-in account → no briefing → no reason to show)
-  const showPet = signedIn && petState !== 'dismissed'
+  const showPet = widgetMode
+    ? widgetVisible
+    : signedIn && petState !== 'dismissed'
 
   // Live focus timer bubble (overrides default bubble)
   const timerBubble =
@@ -1905,7 +2052,9 @@ export default function App() {
       ? `${focusTimer.phase === 'paused' ? '⏸' : '⏱️'} ${formatTimer(focusTimer.remaining)}`
       : null
 
-  const visibleBubble = stickyBubble ?? timerBubble ?? bubbleMessage
+  const visibleBubble = widgetMode
+    ? widgetBubble
+    : (stickyBubble ?? timerBubble ?? bubbleMessage)
 
   const { sprite: spriteSize } = PET_SIZE_DIMS[petSize]
 
@@ -1932,7 +2081,10 @@ export default function App() {
           alignItems: 'flex-end',
           justifyContent: 'center',
           paddingBottom: 4,
-          pointerEvents: stickyBubble || (asking && showPet) ? 'auto' : 'none',
+          pointerEvents:
+            stickyBubble || (widgetMode && widgetBubble) || (asking && showPet)
+              ? 'auto'
+              : 'none',
         }}
       >
         <AnimatePresence>
@@ -1962,24 +2114,26 @@ export default function App() {
                   stickyActionRef.current !== null
                 }
                 onDismiss={
-                  stickyBubble && visibleBubble === stickyBubble
-                    ? () => {
-                        const action = stickyActionRef.current
-                        stickyActionRef.current = null
-                        if (
-                          alertStickyRef.current &&
-                          alertStickyRef.current === stickyBubble
-                        ) {
-                          // User chose to dismiss the alert — remember it so
-                          // the next briefing tick with the same summary
-                          // doesn't immediately pop it back up.
-                          dismissedAlertRef.current = alertStickyRef.current
-                          alertStickyRef.current = null
+                  widgetMode && widgetBubble && visibleBubble === widgetBubble
+                    ? () => hideWidget()
+                    : stickyBubble && visibleBubble === stickyBubble
+                      ? () => {
+                          const action = stickyActionRef.current
+                          stickyActionRef.current = null
+                          if (
+                            alertStickyRef.current &&
+                            alertStickyRef.current === stickyBubble
+                          ) {
+                            // User chose to dismiss the alert — remember it so
+                            // the next briefing tick with the same summary
+                            // doesn't immediately pop it back up.
+                            dismissedAlertRef.current = alertStickyRef.current
+                            alertStickyRef.current = null
+                          }
+                          setStickyBubble(null)
+                          if (action) action()
                         }
-                        setStickyBubble(null)
-                        if (action) action()
-                      }
-                    : undefined
+                      : undefined
                 }
               />
             )
@@ -1987,37 +2141,50 @@ export default function App() {
         </AnimatePresence>
       </div>
 
-      {showPet && (
-        <div
-          ref={petHitRef}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseLeave}
-          onDoubleClick={handleDoubleClick}
-          style={{
-            width: spriteSize,
-            height: spriteSize,
-            display: 'flex',
-            alignItems: 'flex-end',
-            justifyContent: 'center',
-            cursor: 'grab',
-            pointerEvents: 'auto',
-          }}
-        >
-          <PetSprite
-            kind={petKind}
-            action={effectiveAction}
-            size={spriteSize}
-            direction={direction}
-            walking={effectiveAction === 'walk' && !isHeld}
-            paused={wanderPaused || isHeld}
-            onFrame={(f) => {
-              currentLottieFrameRef.current = f
+      <AnimatePresence>
+        {showPet && (
+          <motion.div
+            key="pet-body"
+            ref={petHitRef}
+            onMouseDown={widgetMode ? undefined : handleMouseDown}
+            onMouseMove={widgetMode ? undefined : handleMouseMove}
+            onMouseUp={widgetMode ? undefined : handleMouseUp}
+            onMouseLeave={widgetMode ? undefined : handleMouseLeave}
+            onDoubleClick={
+              widgetMode ? () => hideWidget() : handleDoubleClick
+            }
+            initial={widgetMode ? { scale: 0.25, opacity: 0, y: 24 } : false}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={
+              widgetMode
+                ? { scale: 0.25, opacity: 0, y: 16, transition: { duration: 0.22 } }
+                : { opacity: 0, transition: { duration: 0.12 } }
+            }
+            transition={{ type: 'spring', stiffness: 220, damping: 18 }}
+            style={{
+              width: spriteSize,
+              height: spriteSize,
+              display: 'flex',
+              alignItems: 'flex-end',
+              justifyContent: 'center',
+              cursor: widgetMode ? 'pointer' : 'grab',
+              pointerEvents: 'auto',
             }}
-          />
-        </div>
-      )}
+          >
+            <PetSprite
+              kind={petKind}
+              action={effectiveAction}
+              size={spriteSize}
+              direction={direction}
+              walking={effectiveAction === 'walk' && !isHeld}
+              paused={wanderPaused || isHeld}
+              onFrame={(f) => {
+                currentLottieFrameRef.current = f
+              }}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

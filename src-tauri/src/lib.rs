@@ -20,6 +20,7 @@ struct TrayState {
     signed_in_email: Mutex<Option<String>>,
     dismissed: Mutex<bool>,
     wander_paused: Mutex<bool>,
+    widget_mode: Mutex<bool>,
     pet_size: Mutex<String>,
     panel_visible_before_capture: Mutex<bool>,
     color_picker_capture: Mutex<Option<ColorPickerCapture>>,
@@ -31,6 +32,7 @@ impl Default for TrayState {
             signed_in_email: Mutex::new(None),
             dismissed: Mutex::new(false),
             wander_paused: Mutex::new(false),
+            widget_mode: Mutex::new(false),
             pet_size: Mutex::new("medium".to_string()),
             panel_visible_before_capture: Mutex::new(false),
             color_picker_capture: Mutex::new(None),
@@ -595,6 +597,91 @@ fn panel_anchor_position(app: &AppHandle, anchor_x: i32, anchor_y: i32) -> (i32,
     (clamped_x, clamped_y)
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// Tray anchor — physical position to drop the pet window for "widget mode".
+// We cannot get the tray icon's exact coords (no public API on either OS), so
+// we use the corner near where the tray is known to live:
+//   macOS  — top-right under the menu bar
+//   Windows — adjacent to the taskbar edge reported by SHAppBarMessage
+// Output is the pet window's TOP-LEFT physical position.
+// ─────────────────────────────────────────────────────────────────────────
+
+#[cfg(target_os = "macos")]
+fn tray_anchor_impl(m_x: i32, m_y: i32, m_w: i32, _m_h: i32, scale: f64) -> (i32, i32) {
+    let to_phys = |v: i32| (v as f64 * scale) as i32;
+    let pet_w_phys = to_phys(PET_WINDOW_W);
+    // Sit just under the menu bar, with right padding so the pet visually
+    // hangs below the right cluster (where the system tray items live).
+    let menu_bar_drop = to_phys(28);
+    let right_pad = to_phys(80);
+    let x = m_x + m_w - pet_w_phys - right_pad;
+    let y = m_y + menu_bar_drop;
+    (x, y)
+}
+
+#[cfg(target_os = "windows")]
+fn tray_anchor_impl(m_x: i32, m_y: i32, m_w: i32, m_h: i32, scale: f64) -> (i32, i32) {
+    use windows_sys::Win32::UI::Shell::{
+        SHAppBarMessage, ABE_BOTTOM, ABE_LEFT, ABE_RIGHT, ABE_TOP, ABM_GETTASKBARPOS, APPBARDATA,
+    };
+    let to_phys = |v: i32| (v as f64 * scale) as i32;
+    let pet_w_phys = to_phys(PET_WINDOW_W);
+    let pet_h_phys = to_phys(PET_WINDOW_H);
+    let pad = to_phys(80);
+    unsafe {
+        let mut data: APPBARDATA = std::mem::zeroed();
+        data.cbSize = std::mem::size_of::<APPBARDATA>() as u32;
+        if SHAppBarMessage(ABM_GETTASKBARPOS, &mut data) != 0 {
+            let r = data.rc;
+            let edge = data.uEdge;
+            if edge == ABE_BOTTOM {
+                return (r.right - pet_w_phys - pad, r.top - pet_h_phys);
+            } else if edge == ABE_TOP {
+                return (r.right - pet_w_phys - pad, r.bottom);
+            } else if edge == ABE_LEFT {
+                return (r.right, r.bottom - pet_h_phys - pad);
+            } else if edge == ABE_RIGHT {
+                return (r.left - pet_w_phys, r.bottom - pet_h_phys - pad);
+            }
+        }
+    }
+    (m_x + m_w - pet_w_phys - pad, m_y + m_h - pet_h_phys)
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+fn tray_anchor_impl(m_x: i32, m_y: i32, m_w: i32, _m_h: i32, scale: f64) -> (i32, i32) {
+    let to_phys = |v: i32| (v as f64 * scale) as i32;
+    let pet_w_phys = to_phys(PET_WINDOW_W);
+    (m_x + m_w - pet_w_phys, m_y)
+}
+
+#[tauri::command]
+fn get_tray_anchor_position(app: AppHandle) -> (i32, i32) {
+    // Use the monitor the pet is currently on; the pet window is hidden in
+    // widget mode but its `current_monitor()` reports the last display it sat
+    // on, which is what we want for "pop out near where I last was."
+    let pet_window = app.get_webview_window("pet");
+    let monitor = pet_window
+        .as_ref()
+        .and_then(|w| w.current_monitor().ok().flatten())
+        .or_else(|| {
+            pet_window
+                .as_ref()
+                .and_then(|w| w.primary_monitor().ok().flatten())
+        });
+    let (m_x, m_y, m_w, m_h, scale) = match monitor {
+        Some(m) => (
+            m.position().x,
+            m.position().y,
+            m.size().width as i32,
+            m.size().height as i32,
+            m.scale_factor(),
+        ),
+        None => (0, 0, 1920, 1080, 1.0),
+    };
+    tray_anchor_impl(m_x, m_y, m_w, m_h, scale)
+}
+
 #[tauri::command]
 async fn close_panel(app: AppHandle) -> Result<(), String> {
     if let Some(w) = app.get_webview_window("panel") {
@@ -1073,7 +1160,9 @@ pub fn run() {
             set_auth_state,
             set_dismissed_state,
             set_wander_paused_state,
+            set_widget_mode_state,
             set_pet_size_state,
+            get_tray_anchor_position,
             get_walk_area
         ])
         .setup(|app| {
@@ -1130,6 +1219,19 @@ fn set_wander_paused_state(
 ) -> Result<(), String> {
     if let Ok(mut guard) = state.wander_paused.lock() {
         *guard = paused;
+    }
+    let _ = refresh_tray_menu(&app);
+    Ok(())
+}
+
+#[tauri::command]
+fn set_widget_mode_state(
+    app: AppHandle,
+    state: tauri::State<'_, TrayState>,
+    enabled: bool,
+) -> Result<(), String> {
+    if let Ok(mut guard) = state.widget_mode.lock() {
+        *guard = enabled;
     }
     let _ = refresh_tray_menu(&app);
     Ok(())
@@ -1337,9 +1439,22 @@ fn build_tray_menu(app: &AppHandle) -> Result<tauri::menu::Menu<tauri::Wry>, Box
         .map(|g| *g)
         .unwrap_or(false);
 
+    let widget_mode: bool = app
+        .state::<TrayState>()
+        .widget_mode
+        .lock()
+        .ok()
+        .map(|g| *g)
+        .unwrap_or(false);
+
     let pause_item = CheckMenuItemBuilder::new("재우기")
         .id("wander:toggle")
         .checked(wander_paused)
+        .build(app)?;
+
+    let widget_item = CheckMenuItemBuilder::new("위젯 모드 (알림 시만 등장)")
+        .id("widget:toggle")
+        .checked(widget_mode)
         .build(app)?;
 
     let auth_label = match &signed_in_email {
@@ -1366,6 +1481,7 @@ fn build_tray_menu(app: &AppHandle) -> Result<tauri::menu::Menu<tauri::Wry>, Box
         .text("memory:clear", "메모리 비우기")
         .separator()
         .item(&pause_item)
+        .item(&widget_item)
         .item(&dismiss_item)
         .separator()
         .text("pos:default", "기본 위치")
@@ -1426,6 +1542,9 @@ fn build_tray(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
                 }
                 "wander:toggle" => {
                     let _ = app.emit("orbit:toggle-wander", ());
+                }
+                "widget:toggle" => {
+                    let _ = app.emit("orbit:toggle-widget", ());
                 }
                 "dismiss:toggle" => {
                     let _ = app.emit("orbit:toggle-dismiss", ());
