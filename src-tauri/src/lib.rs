@@ -543,12 +543,28 @@ fn panel_anchor_position(app: &AppHandle, anchor_x: i32, anchor_y: i32) -> (i32,
     // anchor_x/anchor_y come from the JS side as physical pixels (outerPosition).
     // PANEL_WIDTH/HEIGHT and PET_WINDOW_W/H are logical pixels (used by the builder's inner_size).
     // Convert all logical constants to physical via the monitor's scale_factor before mixing.
-    let monitor = app
-        .get_webview_window("pet")
-        .and_then(|w| w.primary_monitor().ok().flatten());
-    let (monitor_w_phys, scale) = match monitor {
-        Some(m) => (m.size().width as i32, m.scale_factor()),
-        None => (1920, 1.0),
+    //
+    // current_monitor를 우선 사용한다. primary_monitor만 쓰면 펫이 보조 모니터에 있을 때
+    // 보조 모니터 크기를 모르고, 좌상단(0,0) 기준으로 클램프해버려 패널이 주 모니터로
+    // 끌려가거나(보조가 주의 왼쪽/위에 있어 anchor가 음수일 때) 화면 밖에 그려진다.
+    let pet_window = app.get_webview_window("pet");
+    let monitor = pet_window
+        .as_ref()
+        .and_then(|w| w.current_monitor().ok().flatten())
+        .or_else(|| {
+            pet_window
+                .as_ref()
+                .and_then(|w| w.primary_monitor().ok().flatten())
+        });
+    let (m_x, m_y, m_w, m_h, scale) = match monitor {
+        Some(m) => (
+            m.position().x,
+            m.position().y,
+            m.size().width as i32,
+            m.size().height as i32,
+            m.scale_factor(),
+        ),
+        None => (0, 0, 1920, 1080, 1.0),
     };
     let to_phys = |v: i32| (v as f64 * scale) as i32;
 
@@ -562,17 +578,21 @@ fn panel_anchor_position(app: &AppHandle, anchor_x: i32, anchor_y: i32) -> (i32,
     let pet_visual_left = anchor_x + pet_visual_pad_phys;
     let pet_visual_right = anchor_x + pet_window_w_phys - pet_visual_pad_phys;
 
+    let monitor_right = m_x + m_w;
     let want_right = pet_visual_right + gap;
-    let target_x = if want_right + panel_w_phys > monitor_w_phys {
+    let target_x = if want_right + panel_w_phys > monitor_right {
         pet_visual_left - panel_w_phys - gap
     } else {
         want_right
     };
 
     let target_y = anchor_y + pet_window_h_phys - panel_h_phys;
-    let clamped_y = target_y.max(0);
 
-    (target_x.max(0), clamped_y)
+    // 펫이 있는 모니터의 경계 안으로 클램프한다. 0이 아닌 모니터의 원점(m_x, m_y) 기준.
+    let clamped_x = target_x.max(m_x).min(m_x + m_w - panel_w_phys);
+    let clamped_y = target_y.max(m_y).min(m_y + m_h - panel_h_phys);
+
+    (clamped_x, clamped_y)
 }
 
 #[tauri::command]
