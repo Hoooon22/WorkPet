@@ -19,10 +19,12 @@ import { fetchFullBriefing } from '../../shared/scheduler'
 import { getSignedInEmail } from '../../shared/auth'
 import AlertsTab from './tabs/AlertsTab'
 import BriefingTab from './tabs/BriefingTab'
+import PetTab from './tabs/PetTab'
+import UsageTab from './tabs/UsageTab'
 import ToolsTab from './tabs/ToolsTab'
 import SettingsTab from './tabs/SettingsTab'
 
-type TabId = 'alerts' | 'briefing' | 'tools' | 'settings'
+type TabId = 'alerts' | 'briefing' | 'pet' | 'usage' | 'tools' | 'settings'
 
 const PANEL_WIDTH = 380
 const PANEL_HEIGHT = 540
@@ -206,6 +208,8 @@ export default function Panel() {
   const tabs: { id: TabId; label: string }[] = [
     { id: 'alerts', label: `🔔 알람${alarmCount > 0 ? ` (${alarmCount})` : ''}` },
     { id: 'briefing', label: '📊 브리핑' },
+    { id: 'pet', label: '🐾 펫' },
+    { id: 'usage', label: '📈 통계' },
     { id: 'tools', label: '🛠️ 도구' },
     { id: 'settings', label: '⚙️ 설정' },
   ]
@@ -296,10 +300,14 @@ export default function Panel() {
               all: 'unset',
               cursor: 'pointer',
               flex: 1,
-              padding: '10px 4px',
-              fontSize: 11,
+              minWidth: 0,
+              padding: '10px 2px',
+              fontSize: 10,
               fontWeight: 700,
               textAlign: 'center',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
               color: tab === t.id ? '#2563eb' : '#9ca3af',
               borderBottom: tab === t.id ? '2px solid #2563eb' : '2px solid transparent',
               marginBottom: -1,
@@ -319,6 +327,8 @@ export default function Panel() {
             onFetch={handleFetchFull}
           />
         )}
+        {tab === 'pet' && <PetTab signedIn={signedIn} action={action} />}
+        {tab === 'usage' && <UsageTab />}
         {tab === 'tools' && <ToolsTab focusTimer={focusTimer} action={action} />}
         {tab === 'settings' && (
           <SettingsTab

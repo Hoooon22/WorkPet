@@ -14,7 +14,6 @@ import ScreenshotPanel from '../panels/ScreenshotPanel'
 import ReminderPanel from '../panels/ReminderPanel'
 import BreakReminderPanel from '../panels/BreakReminderPanel'
 import ClipboardHistoryPanel from '../panels/ClipboardHistoryPanel'
-import UsageReportPanel from '../panels/UsageReportPanel'
 
 interface Props {
   focusTimer: FocusTimerState
@@ -34,7 +33,6 @@ type ToolId =
   | 'color'
   | 'wordcount'
   | 'screenshot'
-  | 'usage'
   | 'teamroom'
 
 interface ToolMeta {
@@ -60,7 +58,6 @@ const TOOLS: ToolMeta[] = [
   { id: 'color',      label: '색상 추출',   emoji: '🎨', bg: '#fdf2f8', border: '#fbcfe8', fg: '#db2777' },
   { id: 'wordcount',  label: '글자수',     emoji: '🔢', bg: '#f3f4f6', border: '#d1d5db', fg: '#4b5563' },
   { id: 'screenshot', label: '영역 캡처',   emoji: '📸', bg: '#ecfeff', border: '#a5f3fc', fg: '#0891b2' },
-  { id: 'usage',      label: '작업 리포트', emoji: '📊', bg: '#eef2ff', border: '#c7d2fe', fg: '#4338ca' },
   { id: 'teamroom',   label: '팀 펫 룸',   emoji: '🏠', bg: '#f5f3ff', border: '#ddd6fe', fg: '#7c3aed', kind: 'window' },
 ]
 
@@ -254,7 +251,6 @@ export default function ToolsTab({ focusTimer, action }: Props) {
               {active === 'color' && <ColorPickerPanel />}
               {active === 'wordcount' && <WordCountPanel />}
               {active === 'screenshot' && <ScreenshotPanel />}
-              {active === 'usage' && <UsageReportPanel />}
             </div>
           </motion.section>
         )}
