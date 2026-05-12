@@ -58,6 +58,8 @@ export type PetId = LottiePetId | SvgPetId
 
 export type PetSize = 'small' | 'medium' | 'large'
 
+export type WanderFrequency = 'low' | 'normal' | 'high'
+
 export interface GachaResult {
   grade: 'COMMON' | 'RARE' | 'EPIC' | 'LEGENDARY'
   petId: PetId

@@ -3,7 +3,7 @@ import { emit } from '@tauri-apps/api/event'
 import { invoke } from '@tauri-apps/api/core'
 import { getValue, KEYS, subscribeStorage } from '../../../shared/storage'
 import { ALL_PET_IDS } from '../../../shared/petCatalog'
-import type { PetId, PetSize } from '../../../shared/types'
+import type { PetId, PetSize, WanderFrequency } from '../../../shared/types'
 
 interface Props {
   signedIn: boolean
@@ -29,14 +29,25 @@ const SIZE_LABELS: Record<PetSize, string> = {
   large: '크게',
 }
 
+const FREQ_LABELS: Record<WanderFrequency, string> = {
+  low: '낮음',
+  normal: '보통',
+  high: '높음',
+}
+
 function isPetSize(v: unknown): v is PetSize {
   return v === 'small' || v === 'medium' || v === 'large'
+}
+
+function isWanderFrequency(v: unknown): v is WanderFrequency {
+  return v === 'low' || v === 'normal' || v === 'high'
 }
 
 export default function PetTab({ signedIn, action }: Props) {
   const [petKind, setPetKind] = useState<PetId>('pico')
   const [petSize, setPetSize] = useState<PetSize>('medium')
   const [wanderPaused, setWanderPaused] = useState(false)
+  const [wanderFreq, setWanderFreq] = useState<WanderFrequency>('normal')
   const [dismissed, setDismissed] = useState(false)
 
   useEffect(() => {
@@ -49,6 +60,8 @@ export default function PetTab({ signedIn, action }: Props) {
       if (!cancelled && isPetSize(s)) setPetSize(s)
       const p = await getValue<boolean>(KEYS.WANDER_PAUSED)
       if (!cancelled && typeof p === 'boolean') setWanderPaused(p)
+      const f = await getValue<string>(KEYS.WANDER_FREQUENCY)
+      if (!cancelled && isWanderFrequency(f)) setWanderFreq(f)
       const d = await getValue<boolean>(KEYS.PET_DISMISSED)
       if (!cancelled && typeof d === 'boolean') setDismissed(d)
       offs.push(
@@ -60,6 +73,9 @@ export default function PetTab({ signedIn, action }: Props) {
         }),
         await subscribeStorage<boolean>(KEYS.WANDER_PAUSED, (v) => {
           if (!cancelled) setWanderPaused(!!v)
+        }),
+        await subscribeStorage<string>(KEYS.WANDER_FREQUENCY, (v) => {
+          if (!cancelled && isWanderFrequency(v)) setWanderFreq(v)
         }),
         await subscribeStorage<boolean>(KEYS.PET_DISMISSED, (v) => {
           if (!cancelled) setDismissed(!!v)
@@ -80,6 +96,9 @@ export default function PetTab({ signedIn, action }: Props) {
   }
   const handleSleepToggle = () => {
     void emit('orbit:toggle-wander')
+  }
+  const handleFreqChange = (f: WanderFrequency) => {
+    void emit('orbit:wander-freq', f)
   }
   const handleOpenProfile = () => {
     void invoke('open_profile').catch(() => {})
@@ -191,6 +210,35 @@ export default function PetTab({ signedIn, action }: Props) {
                 }}
               >
                 {SIZE_LABELS[s]}
+              </button>
+            )
+          })}
+        </div>
+      </Section>
+
+      <Section title="걷는 빈도">
+        <div style={{ display: 'flex', gap: 6 }}>
+          {(['low', 'normal', 'high'] as WanderFrequency[]).map((f) => {
+            const active = f === wanderFreq
+            return (
+              <button
+                key={f}
+                onClick={() => handleFreqChange(f)}
+                style={{
+                  all: 'unset',
+                  cursor: 'pointer',
+                  flex: 1,
+                  padding: '8px 0',
+                  borderRadius: 8,
+                  textAlign: 'center',
+                  background: active ? '#ede9fe' : '#f9fafb',
+                  border: `1px solid ${active ? '#a78bfa' : '#e5e7eb'}`,
+                  color: active ? '#5b21b6' : '#6b7280',
+                  fontSize: 11,
+                  fontWeight: 700,
+                }}
+              >
+                {FREQ_LABELS[f]}
               </button>
             )
           })}

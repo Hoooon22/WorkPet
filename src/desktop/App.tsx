@@ -20,6 +20,7 @@ import type {
   PetSize,
   PetState,
   FocusTimerState,
+  WanderFrequency,
 } from '../shared/types'
 import { EMPTY_BRIEFING, IDLE_FOCUS_TIMER } from '../shared/types'
 import { isLottiePetId, isPetId } from '../shared/petCatalog'
@@ -238,6 +239,20 @@ const PET_SIZE_DIMS: Record<PetSize, { sprite: number }> = {
 const isPetSize = (s: unknown): s is PetSize =>
   s === 'small' || s === 'medium' || s === 'large'
 
+const isWanderFrequency = (v: unknown): v is WanderFrequency =>
+  v === 'low' || v === 'normal' || v === 'high'
+
+// Walking-frequency presets. Higher frequency = shorter idle / longer walk
+// phases, so the pet spends more time moving across the screen.
+const WANDER_FREQ_RANGES: Record<
+  WanderFrequency,
+  { idle: [number, number]; walk: [number, number] }
+> = {
+  low: { idle: [6000, 12000], walk: [2500, 5000] },
+  normal: { idle: [2500, 5500], walk: [3500, 8000] },
+  high: { idle: [800, 2200], walk: [5500, 11000] },
+}
+
 // Lottie frame ranges where the pet is visually standing still (window must not step here).
 // Other Lottie pets loop a continuous walking gait, so they need no entry.
 const LOTTIE_REST_RANGES: Partial<Record<LottiePetId, [number, number]>> = {
@@ -366,6 +381,7 @@ export default function App() {
 
   const wanderActionRef = useRef<WanderPhase>('idle')
   const wanderPausedRef = useRef(false)
+  const wanderFreqRef = useRef<WanderFrequency>('normal')
   const interactingRef = useRef(false)
   const panelOpenRef = useRef(false)
   const petStateRef = useRef<PetState>('idle')
@@ -569,6 +585,9 @@ export default function App() {
 
       const savedPaused = await getValue<boolean>(KEYS.WANDER_PAUSED)
       if (typeof savedPaused === 'boolean') setWanderPaused(savedPaused)
+
+      const savedFreq = await getValue<string>(KEYS.WANDER_FREQUENCY)
+      if (isWanderFrequency(savedFreq)) wanderFreqRef.current = savedFreq
 
       const savedActive = await getValue<GachaResult>(KEYS.ACTIVE_PET)
       if (savedActive) setActivePet(savedActive)
@@ -784,6 +803,15 @@ export default function App() {
         await listen('orbit:toggle-wander', () => {
           if (cancelled) return
           toggleWanderPaused()
+        }),
+      )
+      register(
+        await listen<string>('orbit:wander-freq', async (e) => {
+          if (cancelled) return
+          const freq = e.payload
+          if (!isWanderFrequency(freq)) return
+          wanderFreqRef.current = freq
+          await setValue(KEYS.WANDER_FREQUENCY, freq)
         }),
       )
       register(
@@ -1101,13 +1129,15 @@ export default function App() {
 
     const enterIdle = (now: number) => {
       phase = 'idle'
-      phaseEndAt = now + randomBetween(2500, 5500)
+      const [lo, hi] = WANDER_FREQ_RANGES[wanderFreqRef.current].idle
+      phaseEndAt = now + randomBetween(lo, hi)
       setWanderAction('idle')
     }
     const enterWalk = (now: number) => {
       phase = 'walk'
       walkDir = Math.random() < 0.5 ? -1 : 1
-      phaseEndAt = now + randomBetween(3500, 8000)
+      const [lo, hi] = WANDER_FREQ_RANGES[wanderFreqRef.current].walk
+      phaseEndAt = now + randomBetween(lo, hi)
       setWanderAction('walk')
       setDirection(walkDir === 1 ? 'right' : 'left')
     }

@@ -60,6 +60,7 @@ export const KEYS = {
   PET_KIND: 'pet:kind',
   PET_SIZE: 'pet:size',
   WANDER_PAUSED: 'wander:paused',
+  WANDER_FREQUENCY: 'wander:frequency',
   WINDOW_POSITION: 'window:position',
   ACTIVE_PET: 'pet:active',
   PET_DISMISSED: 'pet:dismissed',
