@@ -1339,7 +1339,7 @@ export default function App() {
     const t = setTimeout(() => {
       if (petStateRef.current === 'sleep' || petStateRef.current === 'dismissed') return
       if (panelOpenRef.current) return
-      showBubble('💬 더블클릭하면 뭐든 물어볼 수 있어요', 3500)
+      showBubble('💬 저를 더블클릭하면 대화할 수 있어요', 3500)
       playAction('peek', 3500)
     }, 5000)
     return () => clearTimeout(t)
@@ -1496,7 +1496,7 @@ export default function App() {
   function scheduleLoginHint(afterMs: number) {
     if (loginHintTimerRef.current) clearTimeout(loginHintTimerRef.current)
     loginHintTimerRef.current = setTimeout(() => {
-      showBubble('💬 더블클릭하면 뭐든 물어볼 수 있어요', 3500)
+      showBubble('💬 저를 더블클릭하면 대화할 수 있어요', 3500)
       playAction('peek', 3500)
     }, afterMs)
   }
