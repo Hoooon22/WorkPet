@@ -1379,7 +1379,8 @@ export default function App() {
     if (petState === 'dismissed' || launchHintShownRef.current) return
     launchHintShownRef.current = true
     const t = setTimeout(() => {
-      if (petStateRef.current === 'sleep' || petStateRef.current === 'dismissed') return
+      if (petStateRef.current === 'dismissed') return
+      if (wanderPausedRef.current || isSleepyRef.current || isAwayRef.current) return
       if (panelOpenRef.current) return
       showBubble('💬 저를 더블클릭하면 대화할 수 있어요', 3500)
       playAction('peek', 3500)
