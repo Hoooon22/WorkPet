@@ -1,4 +1,5 @@
 import type { PetId } from '../types'
+import { pickJosa } from '../korean'
 
 // 지원하는 LLM 공급자. SettingsTab의 드롭다운 옵션과 1:1 대응한다.
 // 'compat'는 OpenAI Chat Completions 호환 엔드포인트(Ollama, LM Studio,
@@ -224,11 +225,12 @@ export async function askQuestion(
   const species = context?.petKind ? PET_SPECIES_KO[context.petKind] : null
   const name = context?.petName?.trim() || (context?.petKind ? PET_DEFAULT_NAMES_KO[context.petKind] : null)
   if (species && name) {
-    sections.push(`너의 종족은 ${species}이고, 이름은 "${name}"이야. 다른 동물·종족이라고 답하지 마.`)
+    const josa = pickJosa(name, '이야', '야')
+    sections.push(`너의 종족은 ${species}이고, 이름은 "${name}"${josa}. 다른 동물·종족이라고 답하지 마.`)
   } else if (species) {
     sections.push(`너의 종족은 ${species}야. 다른 동물·종족이라고 답하지 마.`)
   } else if (name) {
-    sections.push(`너는 사용자의 데스크톱 펫 "${name}"이야.`)
+    sections.push(`너는 사용자의 데스크톱 펫 "${name}"${pickJosa(name, '이야', '야')}.`)
   }
   if (context?.userProfile && context.userProfile.trim()) {
     sections.push(`아래는 사용자가 직접 적어둔 본인 프로필이다:\n${context.userProfile.trim()}`)

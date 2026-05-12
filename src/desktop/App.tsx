@@ -24,6 +24,7 @@ import type {
 } from '../shared/types'
 import { EMPTY_BRIEFING, IDLE_FOCUS_TIMER } from '../shared/types'
 import { isLottiePetId, isPetId } from '../shared/petCatalog'
+import { pickJosa } from '../shared/korean'
 import {
   getValue,
   setValue,
@@ -830,7 +831,7 @@ export default function App() {
             setPetKind(pet.petId)
             await setValue(KEYS.PET_KIND, pet.petId)
           }
-          showBubble(`안녕! 나는 ${pet.name}이야 🎉`, 4000)
+          showBubble(`안녕! 나는 ${pet.name}${pickJosa(pet.name, '이야', '야')} 🎉`, 4000)
           playAction('dance', 4000)
         }),
       )
