@@ -408,6 +408,7 @@ export default function App() {
   const dismissedAlertRef = useRef<string | null>(null)
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const morningGreetingShownRef = useRef(false)
+  const launchHintShownRef = useRef(false)
   const updateInFlightRef = useRef(false)
 
   const mouseDownAtRef = useRef<{ x: number; y: number } | null>(null)
@@ -1328,6 +1329,21 @@ export default function App() {
       return () => clearTimeout(t)
     }
   }, [petState, signedIn])
+
+  // ── Launch hint: "더블클릭하면 대화 가능" 안내 ──
+  // 아침 인사(800ms+2500ms)·로그인 인사(이후 scheduleLoginHint가 알아서 띄움)와
+  // 겹치지 않게 5초쯤 뒤에 한 번만 띄운다. 패널이 열려 있거나 펫이 sleep/dismissed이면 건너뜀.
+  useEffect(() => {
+    if (petState === 'dismissed' || launchHintShownRef.current) return
+    launchHintShownRef.current = true
+    const t = setTimeout(() => {
+      if (petStateRef.current === 'sleep' || petStateRef.current === 'dismissed') return
+      if (panelOpenRef.current) return
+      showBubble('💬 더블클릭하면 뭐든 물어볼 수 있어요', 3500)
+      playAction('peek', 3500)
+    }, 5000)
+    return () => clearTimeout(t)
+  }, [petState])
 
   // ── Auto-cleanup expired events (30s) ──
   useEffect(() => {
