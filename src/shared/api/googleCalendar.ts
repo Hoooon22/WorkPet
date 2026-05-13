@@ -1,4 +1,5 @@
 import { fetchWithAuth } from './fetchWithAuth'
+import { getSignedInEmail } from '../auth'
 import type { CalendarEvent } from '../types'
 
 const BASE_URL = 'https://www.googleapis.com/calendar/v3'
@@ -32,18 +33,38 @@ async function fetchActiveCalendarIds(): Promise<string[]> {
 
 // 일정이 사용자와 관련 있는지 판단한다. 보조·공유 캘린더에는 내가 무관한
 // 타인의 일정도 섞여 들어오므로, 알람/브리핑에서는 다음 중 하나여야 포함한다:
-//   1) 내가 만든 일정 (organizer.self)
-//   2) 내가 참석자에 포함되어 있고, 거절(declined)하지 않은 일정
-function isUserRelevantEvent(item: GoogleCalendarEvent): boolean {
-  if (item.organizer?.self === true) return true
-  const me = item.attendees?.find((a) => a.self === true)
-  if (!me) return false
-  return me.responseStatus !== 'declined'
+//   1) organizer 이메일이 내 이메일과 일치 (내가 만든 일정)
+//   2) attendees에 내 이메일이 있고, 거절(declined)하지 않음
+//
+// 주의: Google API의 attendees[].self / organizer.self는 "쿼리한 캘린더의
+// 소유자"를 가리키므로, 공유 캘린더에서는 본인이 아닌 캘린더 주인을 의미한다.
+// 따라서 self 플래그가 아닌 실제 이메일로 비교해야 한다. userEmail이 없으면
+// 폴백으로 self 플래그를 본다.
+function isUserRelevantEvent(
+  item: GoogleCalendarEvent,
+  userEmail: string | null,
+): boolean {
+  const me = userEmail ? userEmail.toLowerCase() : ''
+  const matches = (email?: string): boolean =>
+    me !== '' && !!email && email.toLowerCase() === me
+
+  if (matches(item.organizer?.email)) return true
+  if (!me && item.organizer?.self === true) return true
+
+  const attendees = item.attendees ?? []
+  if (attendees.length === 0) return false
+
+  const meAttendee =
+    attendees.find((a) => matches(a.email)) ??
+    (!me ? attendees.find((a) => a.self === true) : undefined)
+  if (!meAttendee) return false
+  return meAttendee.responseStatus !== 'declined'
 }
 
 async function fetchEventsFromCalendar(
   calendarId: string,
   params: URLSearchParams,
+  userEmail: string | null,
 ): Promise<CalendarEvent[]> {
   const url = `${BASE_URL}/calendars/${encodeURIComponent(calendarId)}/events?${params}`
   const res = await fetchWithAuth(url)
@@ -55,7 +76,7 @@ async function fetchEventsFromCalendar(
   const items: GoogleCalendarEvent[] = data.items ?? []
   return items
     .filter((item) => item.start && item.end && item.status !== 'cancelled')
-    .filter(isUserRelevantEvent)
+    .filter((item) => isUserRelevantEvent(item, userEmail))
     .map((item) => {
       const startTime = item.start.dateTime ?? `${item.start.date}T00:00:00`
       const endTime = item.end.dateTime ?? `${item.end.date}T23:59:59`
@@ -98,9 +119,12 @@ export async function fetchTodayEvents(): Promise<CalendarEvent[]> {
     maxResults: '20',
   })
 
-  const calendarIds = await fetchActiveCalendarIds()
+  const [calendarIds, userEmail] = await Promise.all([
+    fetchActiveCalendarIds(),
+    getSignedInEmail(),
+  ])
   const results = await Promise.all(
-    calendarIds.map((id) => fetchEventsFromCalendar(id, params)),
+    calendarIds.map((id) => fetchEventsFromCalendar(id, params, userEmail)),
   )
   const merged = mergeUniqueById(results)
   merged.sort((a, b) => a.startTime.localeCompare(b.startTime))
@@ -118,9 +142,12 @@ export async function fetchRecentlyUpdatedEvents(
     orderBy: 'updated',
     maxResults: '20',
   })
-  const calendarIds = await fetchActiveCalendarIds()
+  const [calendarIds, userEmail] = await Promise.all([
+    fetchActiveCalendarIds(),
+    getSignedInEmail(),
+  ])
   const results = await Promise.all(
-    calendarIds.map((id) => fetchEventsFromCalendar(id, params)),
+    calendarIds.map((id) => fetchEventsFromCalendar(id, params, userEmail)),
   )
   const merged = mergeUniqueById(results)
   merged.sort((a, b) =>
@@ -130,6 +157,7 @@ export async function fetchRecentlyUpdatedEvents(
 }
 
 interface GoogleCalendarAttendee {
+  email?: string
   self?: boolean
   responseStatus?: 'needsAction' | 'declined' | 'tentative' | 'accepted'
 }
