@@ -2029,9 +2029,16 @@ export default function App() {
       // We re-read the current list inside to avoid clobbering concurrent edits.
       void (async () => {
         try {
-          const memo = await extractMemory(q, answer, cfg)
-          if (!memo) return
           const current = (await getValue<PetMemoryEntry[]>(KEYS.PET_MEMORY)) ?? []
+          const memo = await extractMemory(q, answer, cfg, {
+            userProfile: profile?.text,
+            existingMemories: current.map((m) => m.text),
+          })
+          if (!memo) return
+          // Cheap dedupe: skip if the extracted line is an exact match of any
+          // existing memory after trimming/case-folding.
+          const key = memo.trim().toLowerCase()
+          if (current.some((m) => m.text.trim().toLowerCase() === key)) return
           const next: PetMemoryEntry[] = [...current, { text: memo, savedAt: Date.now() }]
           // Cap at 100 entries to keep prompt size + storage bounded.
           const trimmed = next.length > 100 ? next.slice(next.length - 100) : next

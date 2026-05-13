@@ -252,19 +252,39 @@ export async function askQuestion(
 
 // 펫과의 Q&A 한 턴에서 사용자에 대해 기억해둘 가치가 있는 사실을 추출한다.
 // 단순 잡담이면 null. 메모리 비대화를 막기 위해 기준을 일부러 빡빡하게 둔다.
+// 프로필/기존 메모리에 이미 있는 사실은 중복 저장되지 않도록 LLM에 넘겨 걸러낸다.
 export async function extractMemory(
   question: string,
   answer: string,
   cfg: LLMConfig,
+  opts?: { userProfile?: string; existingMemories?: string[] },
 ): Promise<string | null> {
+  const knownSections: string[] = []
+  const profile = opts?.userProfile?.trim()
+  if (profile) {
+    knownSections.push(`[유저가 직접 적은 프로필]\n${profile}`)
+  }
+  const existing = (opts?.existingMemories ?? []).map((m) => m.trim()).filter(Boolean)
+  if (existing.length > 0) {
+    const list = existing.map((m) => `- ${m}`).join('\n')
+    knownSections.push(`[이미 기억하고 있는 메모리]\n${list}`)
+  }
+  const knownBlock =
+    knownSections.length > 0
+      ? `\n\n아래는 이미 알고 있는 정보다. 이 안에 이미 있거나, 같은 내용을 표현만 바꾼 사실은 절대 새로 적지 말고 "NONE"으로 답하라.\n\n${knownSections.join('\n\n')}\n`
+      : ''
+
   const prompt =
     `아래는 데스크톱 펫과 사용자의 대화이다.\n\n` +
     `사용자: ${question}\n` +
-    `펫: ${answer}\n\n` +
-    `이 대화에서 사용자에 대해 새로 알게 된, 앞으로 계속 기억할 가치가 있는 사실이 있는가? ` +
+    `펫: ${answer}\n` +
+    `${knownBlock}\n` +
+    `이 대화에서 사용자에 대해 **새로** 알게 된, 앞으로 계속 기억할 가치가 있는 사실이 있는가? ` +
     `(예: 이름·직업·취향·일정·중요한 관계 등) ` +
-    `있다면 1문장(60자 이내)으로 핵심만 적어라. 사실이 없거나 단순 잡담이면 정확히 "NONE"만 출력하라. ` +
-    `추측, 일반론, 인사말, 답변 내용 자체는 적지 마라.`
+    `있다면 1문장(60자 이내)으로 핵심만 적어라. ` +
+    `다음 중 하나라도 해당하면 정확히 "NONE"만 출력하라: ` +
+    `사실이 없거나 단순 잡담인 경우, 위 "이미 알고 있는 정보"에 이미 있는 사실인 경우, ` +
+    `추측·일반론·인사말·펫의 답변 내용 자체.`
   const raw = await callLLM(prompt, cfg)
   const cleaned = raw.trim().replace(/^["'\-•]\s*/, '').replace(/["']$/, '').trim()
   if (!cleaned) return null
