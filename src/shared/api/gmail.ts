@@ -42,9 +42,16 @@ export async function fetchNewEmailsViaHistory(): Promise<EmailItem[]> {
   for (const item of data.history) {
     for (const added of item.messagesAdded ?? []) {
       const labels = added.message.labelIds ?? []
-      if (labels.includes('INBOX') && !labels.includes('SENT')) {
-        newMessageIds.add(added.message.id)
+      if (!labels.includes('INBOX') || labels.includes('SENT')) continue
+      // 프로모션/소셜/포럼 카테고리는 사용자와 직접 관련 없는 자동 발송 메일로 간주해 제외한다.
+      if (
+        labels.includes('CATEGORY_PROMOTIONS') ||
+        labels.includes('CATEGORY_SOCIAL') ||
+        labels.includes('CATEGORY_FORUMS')
+      ) {
+        continue
       }
+      newMessageIds.add(added.message.id)
     }
   }
   if (newMessageIds.size === 0) return []
@@ -70,8 +77,10 @@ export async function fetchNewEmailsViaHistory(): Promise<EmailItem[]> {
 }
 
 export async function fetchUnreadEmails(): Promise<EmailItem[]> {
+  // 프로모션/소셜/포럼 카테고리는 사용자와 직접 관련 없는 자동 발송 메일로 간주해 쿼리에서 제외한다.
+  const query = 'is:unread -category:promotions -category:social -category:forums'
   const listRes = await fetchWithAuth(
-    `${BASE_URL}/messages?q=is%3Aunread&maxResults=5`,
+    `${BASE_URL}/messages?q=${encodeURIComponent(query)}&maxResults=5`,
   )
   if (!listRes || !listRes.ok) {
     console.warn('[Orbit] Gmail list API failed:', listRes?.status)

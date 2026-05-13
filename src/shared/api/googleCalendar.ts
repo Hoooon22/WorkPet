@@ -30,6 +30,20 @@ async function fetchActiveCalendarIds(): Promise<string[]> {
   return ids.length > 0 ? ids : ['primary']
 }
 
+// 일정이 사용자와 관련 있는지 판단한다. 보조·공유 캘린더에는 내가 무관한
+// 타인의 일정도 섞여 들어오므로, 알람/브리핑에서는 다음 중 하나여야 포함한다:
+//   1) 내가 만든 일정 (organizer.self)
+//   2) 참석자 목록 자체가 없는 개인·공지성 일정
+//   3) 내가 참석자에 포함되어 있고, 거절(declined)하지 않은 일정
+function isUserRelevantEvent(item: GoogleCalendarEvent): boolean {
+  if (item.organizer?.self === true) return true
+  const attendees = item.attendees ?? []
+  if (attendees.length === 0) return true
+  const me = attendees.find((a) => a.self === true)
+  if (!me) return false
+  return me.responseStatus !== 'declined'
+}
+
 async function fetchEventsFromCalendar(
   calendarId: string,
   params: URLSearchParams,
@@ -44,6 +58,7 @@ async function fetchEventsFromCalendar(
   const items: GoogleCalendarEvent[] = data.items ?? []
   return items
     .filter((item) => item.start && item.end && item.status !== 'cancelled')
+    .filter(isUserRelevantEvent)
     .map((item) => {
       const startTime = item.start.dateTime ?? `${item.start.date}T00:00:00`
       const endTime = item.end.dateTime ?? `${item.end.date}T23:59:59`
@@ -117,6 +132,11 @@ export async function fetchRecentlyUpdatedEvents(
   return merged
 }
 
+interface GoogleCalendarAttendee {
+  self?: boolean
+  responseStatus?: 'needsAction' | 'declined' | 'tentative' | 'accepted'
+}
+
 interface GoogleCalendarEvent {
   id: string
   summary?: string
@@ -127,4 +147,6 @@ interface GoogleCalendarEvent {
   updated?: string
   start: { dateTime?: string; date?: string }
   end: { dateTime?: string; date?: string }
+  organizer?: { self?: boolean; email?: string }
+  attendees?: GoogleCalendarAttendee[]
 }
