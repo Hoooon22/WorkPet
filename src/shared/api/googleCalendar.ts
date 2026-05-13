@@ -33,13 +33,10 @@ async function fetchActiveCalendarIds(): Promise<string[]> {
 // 일정이 사용자와 관련 있는지 판단한다. 보조·공유 캘린더에는 내가 무관한
 // 타인의 일정도 섞여 들어오므로, 알람/브리핑에서는 다음 중 하나여야 포함한다:
 //   1) 내가 만든 일정 (organizer.self)
-//   2) 참석자 목록 자체가 없는 개인·공지성 일정
-//   3) 내가 참석자에 포함되어 있고, 거절(declined)하지 않은 일정
+//   2) 내가 참석자에 포함되어 있고, 거절(declined)하지 않은 일정
 function isUserRelevantEvent(item: GoogleCalendarEvent): boolean {
   if (item.organizer?.self === true) return true
-  const attendees = item.attendees ?? []
-  if (attendees.length === 0) return true
-  const me = attendees.find((a) => a.self === true)
+  const me = item.attendees?.find((a) => a.self === true)
   if (!me) return false
   return me.responseStatus !== 'declined'
 }
