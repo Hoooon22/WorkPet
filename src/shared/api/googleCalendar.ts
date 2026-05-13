@@ -3,58 +3,41 @@ import type { CalendarEvent } from '../types'
 
 const BASE_URL = 'https://www.googleapis.com/calendar/v3'
 
-export async function fetchTodayEvents(): Promise<CalendarEvent[]> {
-  const now = new Date()
-  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
-
-  const params = new URLSearchParams({
-    timeMin: startOfDay.toISOString(),
-    timeMax: endOfDay.toISOString(),
-    singleEvents: 'true',
-    orderBy: 'startTime',
-    maxResults: '10',
-  })
-
-  const res = await fetchWithAuth(`${BASE_URL}/calendars/primary/events?${params}`)
-  if (!res || !res.ok) {
-    console.warn('[Orbit] Calendar API failed:', res?.status)
-    return []
-  }
-
-  const data = await res.json()
-  const items: GoogleCalendarEvent[] = data.items ?? []
-
-  return items
-    .filter((item) => item.start && item.end)
-    .map((item) => {
-      const startTime = item.start.dateTime ?? `${item.start.date}T00:00:00`
-      const endTime = item.end.dateTime ?? `${item.end.date}T23:59:59`
-      return {
-        id: item.id,
-        title: item.summary ?? '(제목 없음)',
-        startTime,
-        endTime,
-        location: item.location,
-        link: item.htmlLink,
-      }
-    })
+interface CalendarListEntry {
+  id: string
+  primary?: boolean
+  selected?: boolean
+  deleted?: boolean
 }
 
-export async function fetchRecentlyUpdatedEvents(
-  updatedMin: Date,
-): Promise<CalendarEvent[]> {
-  const now = new Date()
-  const params = new URLSearchParams({
-    updatedMin: updatedMin.toISOString(),
-    timeMin: now.toISOString(),
-    singleEvents: 'true',
-    orderBy: 'updated',
-    maxResults: '20',
-  })
-  const res = await fetchWithAuth(`${BASE_URL}/calendars/primary/events?${params}`)
+// 사용자의 Google 캘린더 UI에서 켜져 있는(=selected) 캘린더 id 목록을 가져온다.
+// 보조·공유 캘린더의 일정도 알람/브리핑에 모두 잡히도록, primary만 보지 않고 전부 순회한다.
+async function fetchActiveCalendarIds(): Promise<string[]> {
+  const res = await fetchWithAuth(
+    `${BASE_URL}/users/me/calendarList?minAccessRole=reader&fields=items(id,primary,selected,deleted)`,
+  )
   if (!res || !res.ok) {
-    console.warn('[Orbit] Calendar updated query failed:', res?.status)
+    console.warn('[Orbit] calendarList API failed:', res?.status)
+    return ['primary']
+  }
+  const data = await res.json()
+  const items: CalendarListEntry[] = data.items ?? []
+  const ids = items
+    .filter((it) => !it.deleted)
+    .filter((it) => it.selected === true || it.primary === true)
+    .map((it) => it.id)
+    .filter(Boolean)
+  return ids.length > 0 ? ids : ['primary']
+}
+
+async function fetchEventsFromCalendar(
+  calendarId: string,
+  params: URLSearchParams,
+): Promise<CalendarEvent[]> {
+  const url = `${BASE_URL}/calendars/${encodeURIComponent(calendarId)}/events?${params}`
+  const res = await fetchWithAuth(url)
+  if (!res || !res.ok) {
+    console.warn('[Orbit] Calendar API failed for', calendarId, res?.status)
     return []
   }
   const data = await res.json()
@@ -75,6 +58,63 @@ export async function fetchRecentlyUpdatedEvents(
         updated: item.updated,
       }
     })
+}
+
+function mergeUniqueById(lists: CalendarEvent[][]): CalendarEvent[] {
+  const seen = new Set<string>()
+  const merged: CalendarEvent[] = []
+  for (const list of lists) {
+    for (const evt of list) {
+      if (seen.has(evt.id)) continue
+      seen.add(evt.id)
+      merged.push(evt)
+    }
+  }
+  return merged
+}
+
+export async function fetchTodayEvents(): Promise<CalendarEvent[]> {
+  const now = new Date()
+  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
+
+  const params = new URLSearchParams({
+    timeMin: startOfDay.toISOString(),
+    timeMax: endOfDay.toISOString(),
+    singleEvents: 'true',
+    orderBy: 'startTime',
+    maxResults: '20',
+  })
+
+  const calendarIds = await fetchActiveCalendarIds()
+  const results = await Promise.all(
+    calendarIds.map((id) => fetchEventsFromCalendar(id, params)),
+  )
+  const merged = mergeUniqueById(results)
+  merged.sort((a, b) => a.startTime.localeCompare(b.startTime))
+  return merged
+}
+
+export async function fetchRecentlyUpdatedEvents(
+  updatedMin: Date,
+): Promise<CalendarEvent[]> {
+  const now = new Date()
+  const params = new URLSearchParams({
+    updatedMin: updatedMin.toISOString(),
+    timeMin: now.toISOString(),
+    singleEvents: 'true',
+    orderBy: 'updated',
+    maxResults: '20',
+  })
+  const calendarIds = await fetchActiveCalendarIds()
+  const results = await Promise.all(
+    calendarIds.map((id) => fetchEventsFromCalendar(id, params)),
+  )
+  const merged = mergeUniqueById(results)
+  merged.sort((a, b) =>
+    (a.updated ?? a.startTime).localeCompare(b.updated ?? b.startTime),
+  )
+  return merged
 }
 
 interface GoogleCalendarEvent {
